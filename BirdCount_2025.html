@@ -394,8 +394,9 @@ body{
 
   <!-- LOCATIONS VIEW -->
   <div id="view-locations">
-    <div class="search-wrap">
-      <input class="search-inp" type="search" placeholder="Search stops..." id="loc-search" oninput="renderLocList()">
+    <div class="search-wrap" style="display:flex;gap:8px">
+      <input class="search-inp" style="flex:1" type="search" placeholder="Search stops..." id="loc-search" oninput="renderLocList()">
+      <button class="btn-green" style="flex:none;white-space:nowrap;padding:9px 12px" onclick="showAddStopModal()">+ Stop</button>
     </div>
     <div class="loc-list" id="loc-list"></div>
   </div>
@@ -422,8 +423,9 @@ body{
 
   <!-- MASTER LIST VIEW -->
   <div id="view-master" style="display:none">
-    <div class="search-wrap">
-      <input class="search-inp" type="search" placeholder="Search master list..." id="master-search" oninput="renderMaster()">
+    <div class="search-wrap" style="display:flex;gap:8px">
+      <input class="search-inp" style="flex:1" type="search" placeholder="Search master list..." id="master-search" oninput="renderMaster()">
+      <button class="btn-green" style="flex:none;white-space:nowrap;padding:9px 12px" onclick="showAddMasterModal()">+ Species</button>
     </div>
     <div class="filter-bar" id="master-filter-bar"></div>
     <div class="master-grid" id="master-list"></div>
@@ -466,6 +468,22 @@ body{
       <input type="search" id="modal-search-inp" placeholder="Search..." oninput="rebuildModalList()">
     </div>
     <div class="modal-list" id="modal-list"></div>
+  </div>
+</div>
+
+<!-- INPUT MODAL (add stop / add master species) -->
+<div class="modal-overlay" id="input-modal" onclick="inputModalBgClick(event)">
+  <div class="modal-sheet">
+    <div class="modal-drag"></div>
+    <div class="modal-hd">
+      <div class="modal-title" id="input-modal-title">Add</div>
+      <button class="btn-modal-close" onclick="closeInputModal()">Cancel</button>
+    </div>
+    <div style="padding:16px">
+      <input class="search-inp" id="input-modal-field" type="text" placeholder="" style="margin-bottom:12px">
+      <div id="input-modal-extra" style="margin-bottom:12px"></div>
+      <button class="btn-green" style="width:100%;padding:12px" id="input-modal-btn">Add</button>
+    </div>
   </div>
 </div>
 
@@ -611,7 +629,7 @@ function defaultState(){
 
 let S;
 try{const raw=localStorage.getItem(STORAGE_KEY);S=raw?JSON.parse(raw):defaultState();}catch(e){S=defaultState();}
-if(!S.alsoAt)S.alsoAt={};if(!S.times)S.times={};if(!S.customSpecies)S.customSpecies=[];if(!S.notes)S.notes={};if(!S.skipped)S.skipped={};if(!S.masterList)S.masterList=[...BASE_SPECIES];if(!S.spOrder)S.spOrder='alpha';if(!S.masterOrder)S.masterOrder='alpha';if(!S.masterFilter)S.masterFilter='all';if(!S.spFilter)S.spFilter='all';
+if(!S.alsoAt)S.alsoAt={};if(!S.times)S.times={};if(!S.customSpecies)S.customSpecies=[];if(!S.notes)S.notes={};if(!S.skipped)S.skipped={};if(!S.masterList)S.masterList=[...BASE_SPECIES];if(!S.spOrder)S.spOrder='alpha';if(!S.masterOrder)S.masterOrder='alpha';if(!S.masterFilter)S.masterFilter='all';if(!S.spFilter)S.spFilter='all';if(!S.customSpecies)S.customSpecies=[];
 S.locations.forEach(l=>{if(!S.times[l.id])S.times[l.id]={arrive:null,depart:null,lat:null,lng:null,accuracy:null,estArrive:l.ea||null,estDepart:l.ed||null};['lat','lng','accuracy'].forEach(k=>{if(S.times[l.id][k]===undefined)S.times[l.id][k]=null;});if(!S.times[l.id].estArrive&&l.ea)S.times[l.id].estArrive=l.ea;if(!S.times[l.id].estDepart&&l.ed)S.times[l.id].estDepart=l.ed;if(l.planned===undefined)l.planned=true;});
 if(!S.activeLoc)S.activeLoc=S.locations[0]?.id;
 
@@ -771,10 +789,11 @@ function renderSPCardHeader(){
     `<button class="f-btn ${sf==='here'?'on':''}" onclick="S.spFilter='here';save();renderSPList()">Here (${h})</button>`+
     (lcCount?`<button class="f-btn ${sf==='lc'?'lc-on':''}" onclick="S.spFilter='lc';save();renderSPList()">⚠ Last (${lcCount})</button>`:'')+
     `<div class="order-toggle"><button class="o-btn ${S.spOrder==='alpha'?'on':''}" onclick="S.spOrder='alpha';save();renderSPList()">A–Z</button><button class="o-btn ${S.spOrder==='phylo'?'on':''}" onclick="S.spOrder='phylo';save();renderSPList()">Phylo</button></div>`;
-  // Footer
+  // Footer — add species, skip, remove stop
   document.getElementById('sp-footer').innerHTML=
     `<button class="btn-green" onclick="openAddModal('${lid}')">+ Add species</button>`+
-    `<button class="btn-gray ${sk?'btn-skip-active':''}" onclick="toggleSkip('${lid}')">${sk?'⊘ Undo skip':'⊘ Skip stop'}</button>`;
+    `<button class="btn-gray ${sk?'btn-skip-active':''}" onclick="toggleSkip('${lid}')">${sk?'⊘ Undo skip':'⊘ Skip stop'}</button>`+
+    `<button class="btn-gray" style="color:var(--red);border-color:var(--red)" onclick="removeStop('${lid}')">✕ Remove stop</button>`;
 }
 
 function renderSPList(){
@@ -852,6 +871,78 @@ function clearDepart(lid){S.times[lid].depart=null;save();renderSPCardHeader();}
 function clearGPS(lid){S.times[lid].lat=null;S.times[lid].lng=null;S.times[lid].accuracy=null;save();renderSPCardHeader();}
 function toggleSkip(lid){if(S.skipped[lid]){delete S.skipped[lid];}else{S.skipped[lid]=true;}save();renderSPCardHeader();renderSPList();renderHeader();}
 
+function removeStop(lid){
+  const loc=S.locations.find(l=>l.id===lid);if(!loc)return;
+  if(!confirm(`Remove "${loc.name}" from the route?\n\nSighting data for this stop will be reassigned.`))return;
+  S.locations=S.locations.filter(l=>l.id!==lid);
+  delete S.locSpecies[lid];delete S.times[lid];delete S.skipped[lid];
+  Object.keys(S.notes).forEach(k=>{if(k.startsWith(lid+'::'))delete S.notes[k];});
+  Object.keys(S.seenAt).forEach(name=>{
+    if(S.seenAt[name]===lid){const also=(S.alsoAt[name]||[]).filter(id=>id!==lid);if(also.length){S.seenAt[name]=also[0];S.alsoAt[name]=also.slice(1);}else{delete S.seenAt[name];}}
+    if(S.alsoAt[name])S.alsoAt[name]=(S.alsoAt[name]||[]).filter(id=>id!==lid);
+  });
+  closeSPCard();save();renderAll();
+}
+
+// ==================== INPUT MODAL ====================
+function closeInputModal(){document.getElementById('input-modal').classList.remove('show');}
+function inputModalBgClick(e){if(e.target===document.getElementById('input-modal'))closeInputModal();}
+
+const ALL_ICONS=['📍','💧','🌲','🌊','🌾','🏔','🌿','🏙','🌅','🪨','🏕️','🛣️','🌉','🐟','🌳','🏠','⛰️'];
+let _selIcon='📍';
+
+function showAddStopModal(){
+  _selIcon='📍';
+  document.getElementById('input-modal-title').textContent='Add Unplanned Stop';
+  document.getElementById('input-modal-field').value='';
+  document.getElementById('input-modal-field').placeholder='Stop name...';
+  document.getElementById('input-modal-extra').innerHTML=
+    `<div style="font-size:12px;color:var(--text2);margin-bottom:6px">Icon</div>`+
+    `<div style="display:flex;flex-wrap:wrap;gap:6px">`+
+    ALL_ICONS.map(ic=>`<span onclick="selectStopIcon('${ic}',this)" style="font-size:22px;padding:4px 6px;border-radius:6px;border:2px solid ${ic==='📍'?'var(--green)':'transparent'};cursor:pointer">${ic}</span>`).join('')+
+    `</div>`;
+  document.getElementById('input-modal-btn').textContent='Add Stop';
+  document.getElementById('input-modal-btn').onclick=commitAddStop;
+  document.getElementById('input-modal').classList.add('show');
+  setTimeout(()=>document.getElementById('input-modal-field').focus(),100);
+}
+window.selectStopIcon=function(icon,el){
+  _selIcon=icon;
+  document.querySelectorAll('#input-modal-extra span').forEach(e=>e.style.borderColor='transparent');
+  el.style.borderColor='var(--green)';
+};
+function commitAddStop(){
+  const name=document.getElementById('input-modal-field').value.trim();
+  if(!name){document.getElementById('input-modal-field').style.borderColor='var(--red)';return;}
+  const id='u'+Date.now();
+  S.locations.push({id,name,icon:_selIcon,planned:false});
+  S.locSpecies[id]=[];
+  S.times[id]={arrive:null,depart:null,lat:null,lng:null,accuracy:null,estArrive:null,estDepart:null};
+  save();closeInputModal();renderLocList();renderHeader();
+}
+
+function showAddMasterModal(){
+  document.getElementById('input-modal-title').textContent='Add to Master List';
+  document.getElementById('input-modal-field').value='';
+  document.getElementById('input-modal-field').placeholder='Species name...';
+  document.getElementById('input-modal-extra').innerHTML=`<div style="font-size:12px;color:var(--text2)">Will be marked as <strong>custom</strong> and added to the master list.</div>`;
+  document.getElementById('input-modal-btn').textContent='Add Species';
+  document.getElementById('input-modal-btn').onclick=commitAddMasterSpecies;
+  document.getElementById('input-modal').classList.add('show');
+  setTimeout(()=>document.getElementById('input-modal-field').focus(),100);
+}
+function commitAddMasterSpecies(){
+  const name=document.getElementById('input-modal-field').value.trim();
+  if(!name){document.getElementById('input-modal-field').style.borderColor='var(--red)';return;}
+  if(allSpecies().some(s=>s.toLowerCase()===name.toLowerCase())){
+    document.getElementById('input-modal-field').style.borderColor='var(--red)';
+    document.getElementById('input-modal-extra').innerHTML=`<div style="font-size:12px;color:var(--red)">"${name}" already exists in the master list.</div>`;
+    return;
+  }
+  S.masterList.push(name);if(!S.customSpecies)S.customSpecies=[];S.customSpecies.push(name);
+  save();closeInputModal();renderMaster();
+}
+
 // ==================== ADD SPECIES MODAL ====================
 let _modalLid=null;
 function openAddModal(lid){_modalLid=lid;document.getElementById('modal-title').textContent='Add species';document.getElementById('modal-search-inp').value='';rebuildModalList();document.getElementById('modal').classList.add('show');setTimeout(()=>document.getElementById('modal-search-inp').focus(),100);}
@@ -867,25 +958,37 @@ function rebuildModalList(){
 }
 function addSP(name){if(!_modalLid)return;if(!S.locSpecies[_modalLid])S.locSpecies[_modalLid]=[];if(!S.locSpecies[_modalLid].includes(name))S.locSpecies[_modalLid].push(name);save();rebuildModalList();renderSPCardHeader();}
 
+// ==================== PHYLO ORDER ====================
+const FAMILY_GROUPS=[{label:"Waterfowl",species:["Snow Goose","Ross's Goose","Greater White-fronted Goose","Brant","Cackling Goose","Canada Goose","Trumpeter Swan","Tundra Swan","Wood Duck","Blue-winged Teal","Cinnamon Teal","Northern Shoveler","Gadwall","Eurasian Wigeon","American Wigeon","Mallard","Northern Pintail","Green-winged Teal","Canvasback","Redhead","Ring-necked Duck","Tufted Duck","Greater Scaup","Lesser Scaup","Harlequin Duck","Surf Scoter","White-winged Scoter","Black Scoter","Long-tailed Duck","Bufflehead","Common Goldeneye","Barrow's Goldeneye","Hooded Merganser","Common Merganser","Red-breasted Merganser","Ruddy Duck"]},{label:"Quail & Allies",species:["Mountain Quail","California Quail","Wild Turkey","Ruffed Grouse","Greater Sage-Grouse","Sooty Grouse","Ring-necked Pheasant","Chukar"]},{label:"Grebes",species:["Pied-billed Grebe","Horned Grebe","Red-necked Grebe","Eared Grebe","Western Grebe","Clark's Grebe"]},{label:"Pigeons & Doves",species:["Rock Pigeon","Band-tailed Pigeon","Eurasian Collared-Dove","Mourning Dove"]},{label:"Nightjars & Swifts",species:["Common Nighthawk","Common Poorwill","Black Swift","Vaux's Swift","White-throated Swift"]},{label:"Hummingbirds",species:["Black-chinned Hummingbird","Anna's Hummingbird","Costa's Hummingbird","Calliope Hummingbird","Rufous Hummingbird","Allen's Hummingbird"]},{label:"Rails & Coots",species:["Virginia Rail","Sora","American Coot","Yellow Rail"]},{label:"Cranes",species:["Sandhill Crane"]},{label:"Stilts, Avocets & Oystercatchers",species:["Black-necked Stilt","American Avocet","Black Oystercatcher"]},{label:"Plovers",species:["Black-bellied Plover","American Golden-Plover","Pacific Golden-Plover","Killdeer","Semipalmated Plover","Snowy Plover"]},{label:"Sandpipers & Phalaropes",species:["Hudsonian Whimbrel","Long-billed Curlew","Marbled Godwit","Ruddy Turnstone","Black Turnstone","Red Knot","Surfbird","Sanderling","Dunlin","Baird's Sandpiper","Least Sandpiper","Western Sandpiper","Pectoral Sandpiper","Semipalmated Sandpiper","Short-billed Dowitcher","Long-billed Dowitcher","Wilson's Snipe","Spotted Sandpiper","Solitary Sandpiper","Wandering Tattler","Lesser Yellowlegs","Willet","Greater Yellowlegs","Wilson's Phalarope","Red-necked Phalarope"]},{label:"Auks",species:["Common Murre","Pigeon Guillemot","Marbled Murrelet","Cassin's Auklet","Rhinoceros Auklet","Tufted Puffin"]},{label:"Gulls & Terns",species:["Black-legged Kittiwake","Bonaparte's Gull","Franklin's Gull","Heermann's Gull","Short-billed Gull","Ring-billed Gull","Western Gull","California Gull","American Herring Gull","Iceland Gull","Glaucous-winged Gull","Glaucous Gull","Elegant Tern","Caspian Tern","Black Tern","Common Tern","Forster's Tern"]},{label:"Loons",species:["Red-throated Loon","Pacific Loon","Common Loon"]},{label:"Petrels & Shearwaters",species:["Fork-tailed Storm-Petrel","Sooty Shearwater"]},{label:"Pelicans",species:["American White Pelican","Brown Pelican"]},{label:"Cormorants",species:["Brandt's Cormorant","Pelagic Cormorant","Double-crested Cormorant"]},{label:"Herons & Egrets",species:["American Bittern","Snowy Egret","Black-crowned Night Heron","Green Heron","Great Egret","Great Blue Heron"]},{label:"Ibises",species:["White-faced Ibis"]},{label:"New World Vultures",species:["Turkey Vulture"]},{label:"Osprey & Hawks",species:["Osprey","White-tailed Kite","Golden Eagle","Northern Harrier","Sharp-shinned Hawk","Cooper's Hawk","American Goshawk","Bald Eagle","Red-shouldered Hawk","Swainson's Hawk","Red-tailed Hawk","Rough-legged Hawk","Ferruginous Hawk"]},{label:"Owls",species:["American Barn Owl","Flammulated Owl","Western Screech-Owl","Great Horned Owl","Northern Pygmy-Owl","Burrowing Owl","Spotted Owl","Barred Owl","Great Gray Owl","Long-eared Owl","Short-eared Owl","Northern Saw-whet Owl"]},{label:"Kingfishers",species:["Belted Kingfisher"]},{label:"Woodpeckers",species:["Lewis's Woodpecker","Acorn Woodpecker","Williamson's Sapsucker","Red-naped Sapsucker","Red-breasted Sapsucker","American Three-toed Woodpecker","Black-backed Woodpecker","Downy Woodpecker","Hairy Woodpecker","White-headed Woodpecker","Northern Flicker","Pileated Woodpecker"]},{label:"Falcons",species:["American Kestrel","Merlin","Peregrine Falcon","Prairie Falcon"]},{label:"Flycatchers",species:["Ash-throated Flycatcher","Western Kingbird","Eastern Kingbird","Olive-sided Flycatcher","Western Wood-Pewee","Willow Flycatcher","Least Flycatcher","Hammond's Flycatcher","Gray Flycatcher","Dusky Flycatcher","Western Flycatcher","Black Phoebe","Say's Phoebe"]},{label:"Vireos",species:["Hutton's Vireo","Cassin's Vireo","Western Warbling Vireo","Red-eyed Vireo"]},{label:"Shrikes",species:["Loggerhead Shrike","Northern Shrike"]},{label:"Jays, Crows & Ravens",species:["Canada Jay","Pinyon Jay","Steller's Jay","California Scrub-Jay","Clark's Nutcracker","Black-billed Magpie","American Crow","Common Raven"]},{label:"Chickadees & Titmice",species:["Black-capped Chickadee","Mountain Chickadee","Chestnut-backed Chickadee","Oak Titmouse"]},{label:"Larks",species:["Horned Lark"]},{label:"Swallows",species:["Bank Swallow","Tree Swallow","Violet-green Swallow","Northern Rough-winged Swallow","Purple Martin","Barn Swallow","Cliff Swallow"]},{label:"Bushtit",species:["Bushtit"]},{label:"Wrentit",species:["Wrentit"]},{label:"Kinglets",species:["Golden-crowned Kinglet","Ruby-crowned Kinglet"]},{label:"Waxwings",species:["Cedar Waxwing"]},{label:"Nuthatches",species:["Red-breasted Nuthatch","White-breasted Nuthatch","Pygmy Nuthatch"]},{label:"Creepers",species:["Brown Creeper"]},{label:"Gnatcatchers",species:["Blue-gray Gnatcatcher"]},{label:"Wrens",species:["Rock Wren","Canyon Wren","Bewick's Wren","Northern House Wren","Pacific Wren","Marsh Wren"]},{label:"Mockingbirds & Thrashers",species:["Gray Catbird","Sage Thrasher","Northern Mockingbird"]},{label:"Starlings",species:["European Starling"]},{label:"Dippers",species:["American Dipper"]},{label:"Thrushes",species:["Western Bluebird","Mountain Bluebird","Townsend's Solitaire","Swainson's Thrush","Hermit Thrush","American Robin","Varied Thrush"]},{label:"House Sparrow",species:["House Sparrow"]},{label:"Pipits",species:["American Pipit"]},{label:"Finches",species:["Evening Grosbeak","Gray-crowned Rosy-Finch","House Finch","Purple Finch","Cassin's Finch","Red Crossbill","Pine Siskin","Lesser Goldfinch","American Goldfinch"]},{label:"Sparrows & Towhees",species:["Grasshopper Sparrow","Black-throated Sparrow","Lark Sparrow","Chipping Sparrow","Brewer's Sparrow","Fox Sparrow","Dark-eyed Junco","White-crowned Sparrow","Golden-crowned Sparrow","White-throated Sparrow","Sagebrush Sparrow","Vesper Sparrow","Savannah Sparrow","Song Sparrow","Lincoln's Sparrow","California Towhee","Green-tailed Towhee","Spotted Towhee"]},{label:"Yellow-breasted Chat",species:["Yellow-breasted Chat"]},{label:"Blackbirds & Orioles",species:["Yellow-headed Blackbird","Western Meadowlark","Bullock's Oriole","Red-winged Blackbird","Tricolored Blackbird","Brown-headed Cowbird","Brewer's Blackbird","Great-tailed Grackle"]},{label:"Wood-Warblers",species:["Northern Waterthrush","Orange-crowned Warbler","Nashville Warbler","MacGillivray's Warbler","Common Yellowthroat","Northern Yellow Warbler","Yellow-rumped Warbler","Black-throated Gray Warbler","Townsend's Warbler","Hermit Warbler","Wilson's Warbler"]},{label:"Cardinals & Tanagers",species:["Western Tanager","Black-headed Grosbeak","Lazuli Bunting"]}];
+const PHYLO_ORDER={};FAMILY_GROUPS.forEach((g,gi)=>g.species.forEach((s,si)=>{PHYLO_ORDER[s]=gi*1000+si;}));
+function phyloRank(n){return PHYLO_ORDER[n]??99999;}
+
 // ==================== MASTER LIST ====================
 function renderMaster(){
   const search=(document.getElementById('master-search')?.value||'').toLowerCase();
   const filter=S.masterFilter||'all';
+  const order=S.masterOrder||'alpha';
   const locMap={};S.locations.forEach(loc=>(S.locSpecies[loc.id]||[]).forEach(n=>{if(!locMap[n])locMap[n]=[];locMap[n].push(loc);}));
   const all=allSpecies();
   function pf(s){if(search&&!s.toLowerCase().includes(search))return false;if(filter==='seen')return isSeen(s);if(filter==='unseen')return!isSeen(s);if(filter==='listed')return!!locMap[s];if(filter==='custom')return isCustom(s);return true;}
-  const unL=all.filter(s=>!isSeen(s)&&pf(s));const seL=all.filter(s=>isSeen(s)&&pf(s));
-  // Filter bar
+  let unL=all.filter(s=>!isSeen(s)&&pf(s));
+  let seL=all.filter(s=>isSeen(s)&&pf(s));
+  if(order==='phylo'){
+    unL=unL.slice().sort((a,b)=>phyloRank(a)-phyloRank(b));
+    seL=seL.slice().sort((a,b)=>phyloRank(a)-phyloRank(b));
+  }
+  // Filter + order bar
   document.getElementById('master-filter-bar').innerHTML=
-    ['all','seen','unseen','listed','custom'].map(f=>`<button class="f-btn ${filter===f?'on':''}" onclick="S.masterFilter='${f}';save();renderMaster()">${f.charAt(0).toUpperCase()+f.slice(1)}</button>`).join('');
-  let html='';
+    ['all','seen','unseen','listed','custom'].map(f=>`<button class="f-btn ${filter===f?'on':''}" onclick="S.masterFilter='${f}';save();renderMaster()">${f.charAt(0).toUpperCase()+f.slice(1)}</button>`).join('')+
+    `<div class="order-toggle"><button class="o-btn ${order==='alpha'?'on':''}" onclick="S.masterOrder='alpha';save();renderMaster()">A–Z</button><button class="o-btn ${order==='phylo'?'on':''}" onclick="S.masterOrder='phylo';save();renderMaster()">Phylo</button></div>`;
   const combined=[...unL,...seL];
   if(!combined.length){document.getElementById('master-list').innerHTML=`<div class="empty">No species match</div>`;return;}
-  let inSeen=false;
+  let html='';let inSeen=false;
   for(const s of combined){
     if(!inSeen&&isSeen(s)&&unL.length>0){inSeen=true;html+=`<div class="sp-section-hd">Seen (${seL.length})</div>`;}
     const locs=locMap[s]||[];const fl=S.seenAt[s]?S.locations.find(l=>l.id===S.seenAt[s]):null;
-    html+=`<div class="m-item">${indHTML(isSeen(s)?'here':'none')}<div style="flex:1;min-width:0"><div class="m-name">${s}${isCustom(s)?` <span class="custom-badge">custom</span>`:''}</div>${fl?`<div class="m-sub">First: ${fl.icon} ${fl.name}</div>`:''}${locs.length?`<div class="m-locs">${locs.map(l=>`<span class="m-pill ${getStateForLoc(s,l.id)==='here'?'m-pill-here':''}">${l.icon}</span>`).join('')}</div>`:`<div class="unassigned">not assigned</div>`}</div></div>`;
+    const locNames=locs.map(l=>`<span class="m-pill ${getStateForLoc(s,l.id)==='here'?'m-pill-here':''}">${l.icon} ${l.name}</span>`).join('');
+    html+=`<div class="m-item">${indHTML(isSeen(s)?'here':'none')}<div style="flex:1;min-width:0"><div class="m-name">${s}${isCustom(s)?` <span class="custom-badge">custom</span>`:''}</div>${fl?`<div class="m-sub">First: ${fl.icon} ${fl.name}</div>`:''}${locs.length?`<div class="m-locs">${locNames}</div>`:`<div class="unassigned">not assigned</div>`}</div></div>`;
   }
   document.getElementById('master-list').innerHTML=html;
 }
