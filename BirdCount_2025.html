@@ -830,12 +830,12 @@ function renderSPCardHeader(){
   const lcCount=sps.filter(n=>!isSeen(n)&&lastChanceStatus(n,lid)!==null).length;
   const sf=S.spFilter;
   document.getElementById('sp-filter-bar').innerHTML=
-    `<button class="f-btn ${sf==='all'?'on':''}" onclick="S.spFilter='all';save();renderSPList()">All (${total})</button>`+
-    `<button class="f-btn ${sf==='unseen'?'on':''}" onclick="S.spFilter='unseen';save();renderSPList()">Unseen</button>`+
-    `<button class="f-btn ${sf==='elsewhere'?'on':''}" onclick="S.spFilter='elsewhere';save();renderSPList()">Elsewhere (${el})</button>`+
-    `<button class="f-btn ${sf==='here'?'on':''}" onclick="S.spFilter='here';save();renderSPList()">Here (${h})</button>`+
-    (lcCount?`<button class="f-btn ${sf==='lc'?'lc-on':''}" onclick="S.spFilter='lc';save();renderSPList()">⚠ Last (${lcCount})</button>`:'')+
-    `<div class="order-toggle"><button class="o-btn ${S.spOrder==='alpha'?'on':''}" onclick="S.spOrder='alpha';save();renderSPList()">A–Z</button><button class="o-btn ${S.spOrder==='phylo'?'on':''}" onclick="S.spOrder='phylo';save();renderSPList()">Phylo</button></div>`;
+    `<button class="f-btn ${sf==='all'?'on':''}" onclick="S.spFilter='all';saveLocal();renderSPList()">All (${total})</button>`+
+    `<button class="f-btn ${sf==='unseen'?'on':''}" onclick="S.spFilter='unseen';saveLocal();renderSPList()">Unseen</button>`+
+    `<button class="f-btn ${sf==='elsewhere'?'on':''}" onclick="S.spFilter='elsewhere';saveLocal();renderSPList()">Elsewhere (${el})</button>`+
+    `<button class="f-btn ${sf==='here'?'on':''}" onclick="S.spFilter='here';saveLocal();renderSPList()">Here (${h})</button>`+
+    (lcCount?`<button class="f-btn ${sf==='lc'?'lc-on':''}" onclick="S.spFilter='lc';saveLocal();renderSPList()">⚠ Last (${lcCount})</button>`:'')+
+    `<div class="order-toggle"><button class="o-btn ${S.spOrder==='alpha'?'on':''}" onclick="S.spOrder='alpha';saveLocal();renderSPList()">A–Z</button><button class="o-btn ${S.spOrder==='phylo'?'on':''}" onclick="S.spOrder='phylo';saveLocal();renderSPList()">Phylo</button></div>`;
   // Footer — add species, skip, remove stop
   document.getElementById('sp-footer').innerHTML=
     `<button class="btn-green" onclick="openAddModal('${lid}')">+ Add species</button>`+
@@ -1026,8 +1026,8 @@ function renderMaster(){
   }
   // Filter + order bar
   document.getElementById('master-filter-bar').innerHTML=
-    ['all','seen','unseen','listed','custom'].map(f=>`<button class="f-btn ${filter===f?'on':''}" onclick="S.masterFilter='${f}';save();renderMaster()">${f.charAt(0).toUpperCase()+f.slice(1)}</button>`).join('')+
-    `<div class="order-toggle"><button class="o-btn ${order==='alpha'?'on':''}" onclick="S.masterOrder='alpha';save();renderMaster()">A–Z</button><button class="o-btn ${order==='phylo'?'on':''}" onclick="S.masterOrder='phylo';save();renderMaster()">Phylo</button></div>`;
+    ['all','seen','unseen','listed','custom'].map(f=>`<button class="f-btn ${filter===f?'on':''}" onclick="S.masterFilter='${f}';saveLocal();renderMaster()">${f.charAt(0).toUpperCase()+f.slice(1)}</button>`).join('')+
+    `<div class="order-toggle"><button class="o-btn ${order==='alpha'?'on':''}" onclick="S.masterOrder='alpha';saveLocal();renderMaster()">A–Z</button><button class="o-btn ${order==='phylo'?'on':''}" onclick="S.masterOrder='phylo';saveLocal();renderMaster()">Phylo</button></div>`;
   const combined=[...unL,...seL];
   if(!combined.length){document.getElementById('master-list').innerHTML=`<div class="empty">No species match</div>`;return;}
   let html='';let inSeen=false;
@@ -1163,11 +1163,19 @@ function attachSyncListener(){
     applySyncPayload(data);
     saveLocal();
     updateSyncStatus('synced');
-    if(!currentLoc){
-      renderAll();
-    } else {
-      renderHeader();
+    // Never call renderAll() — it resets the view and closes open stop cards
+    // Instead do surgical updates only
+    renderHeader();
+    if(currentLoc){
+      // User is inside a stop card — update species list and card header only
+      renderSPCardHeader();
       renderSPList();
+    } else if(S.view==='locations'){
+      renderLocList();
+    } else if(S.view==='master'){
+      renderMaster();
+    } else if(S.view==='manage'){
+      renderManage();
     }
   });
 }
