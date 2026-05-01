@@ -644,6 +644,7 @@ if(!S.alsoAt)S.alsoAt={};if(!S.times)S.times={};if(!S.customSpecies)S.customSpec
 S.locations.forEach(l=>{if(!S.times[l.id])S.times[l.id]={arrive:null,depart:null,lat:null,lng:null,accuracy:null,estArrive:l.ea||null,estDepart:l.ed||null};['lat','lng','accuracy'].forEach(k=>{if(S.times[l.id][k]===undefined)S.times[l.id][k]=null;});if(!S.times[l.id].estArrive&&l.ea)S.times[l.id].estArrive=l.ea;if(!S.times[l.id].estDepart&&l.ed)S.times[l.id].estDepart=l.ed;if(l.planned===undefined)l.planned=true;});
 if(!S.activeLoc)S.activeLoc=S.locations[0]?.id;
 
+// Stub save — replaced by full sync-aware version in Firebase section below
 function save(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(S));}catch(e){console.warn('Save failed',e);}}
 
 // ==================== HELPERS ====================
@@ -1129,12 +1130,11 @@ function updateSyncStatus(status){
   else el.innerHTML='';
 }
 
-// Override save to also push to Firebase
-const _origSave=save;
-window.save=function(){
-  _origSave();
+// Sync-aware save (replaces original save)
+function save(){
+  try{localStorage.setItem(STORAGE_KEY,JSON.stringify(S));}catch(e){console.warn('Save failed',e);}
   if(_syncEnabled){_localChange=true;pushSync();}
-};
+}
 
 // ==================== SESSION UI ====================
 function showSessionScreen(){
