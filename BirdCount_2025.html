@@ -1128,21 +1128,27 @@ function applySyncPayload(data){
   }catch(e){console.warn('applySyncPayload error:',e);}
 }
 
+let _lastPushedAt=0;
+
 async function pushSync(){
   if(!_syncEnabled||!db||!sessionCode)return;
   try{
-    await window._fbSet(window._fbRef(db,`sessions/${sessionCode}/data`),buildSyncPayload());
+    const payload=buildSyncPayload();
+    _lastPushedAt=payload.updatedAt;
+    await window._fbSet(window._fbRef(db,`sessions/${sessionCode}/data`),payload);
   }catch(e){console.warn('Sync push failed:',e);}
 }
 
 function attachSyncListener(){
   if(_syncListenerAttached||!db||!sessionCode)return;
   _syncListenerAttached=true;
-  let firstCall=true;
+  let lastApplied=0;
   window._fbOnValue(window._fbRef(db,`sessions/${sessionCode}/data`),(snap)=>{
-    if(firstCall){firstCall=false;return;}// skip initial fire to avoid overwriting local state
-    if(_localChange){_localChange=false;return;}
     const data=snap.val();if(!data)return;
+    const remoteTs=data.updatedAt||0;
+    // Ignore our own echo and data we've already applied
+    if(remoteTs<=lastApplied||remoteTs===_lastPushedAt)return;
+    lastApplied=remoteTs;
     applySyncPayload(data);
     save();
     renderAll();
