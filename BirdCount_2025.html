@@ -662,8 +662,16 @@ if(!S.alsoAt)S.alsoAt={};if(!S.times)S.times={};if(!S.customSpecies)S.customSpec
 S.locations.forEach(l=>{if(!S.times[l.id])S.times[l.id]={arrive:null,depart:null,lat:null,lng:null,accuracy:null,estArrive:l.ea||null,estDepart:l.ed||null};['lat','lng','accuracy'].forEach(k=>{if(S.times[l.id][k]===undefined)S.times[l.id][k]=null;});if(!S.times[l.id].estArrive&&l.ea)S.times[l.id].estArrive=l.ea;if(!S.times[l.id].estDepart&&l.ed)S.times[l.id].estDepart=l.ed;if(l.planned===undefined)l.planned=true;});
 if(!S.activeLoc)S.activeLoc=S.locations[0]?.id;
 
-// Stub save — replaced by full sync-aware version in Firebase section below
-function save(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(S));}catch(e){console.warn('Save failed',e);}}
+// Save locally only - no Firebase push
+function saveLocal(){
+  try{localStorage.setItem(STORAGE_KEY,JSON.stringify(S));}catch(e){console.warn('Save failed',e);}
+}
+
+// Save locally AND push to Firebase - only call when sighting data changes
+function save(){
+  saveLocal();
+  if(_syncEnabled){_lastPushedAt=Date.now();pushSync();}
+}
 
 // ==================== HELPERS ====================
 function isSeen(n){return S.seenAt[n]!==undefined;}
@@ -721,7 +729,7 @@ function renderHeader(){
 }
 
 function setView(v){
-  S.view=v;save();
+  S.view=v;saveLocal();
   ['view-locations','view-master','view-manage','view-export'].forEach(id=>{document.getElementById(id).style.display='none';});
   const spCard=document.getElementById('sp-card');spCard.classList.remove('visible');
   if(v==='locations'){document.getElementById('view-locations').style.display='';renderLocList();}
@@ -761,7 +769,7 @@ function renderLocList(){
 let currentLoc=null;
 
 function openSPCard(lid){
-  currentLoc=lid;S.activeLoc=lid;save();
+  currentLoc=lid;S.activeLoc=lid;saveLocal();
   const loc=S.locations.find(l=>l.id===lid);if(!loc)return;
   document.getElementById('view-locations').style.display='none';
   const card=document.getElementById('sp-card');card.classList.add('visible');
@@ -1146,14 +1154,18 @@ function attachSyncListener(){
   window._fbOnValue(window._fbRef(db,`sessions/${sessionCode}/data`),(snap)=>{
     const data=snap.val();if(!data)return;
     const remoteTs=data.updatedAt||0;
-    // Ignore our own echo and data we've already applied
     if(remoteTs<=lastApplied||remoteTs===_lastPushedAt)return;
     lastApplied=remoteTs;
+    // Apply data to state silently
     applySyncPayload(data);
-    save();
-    renderAll();
-    if(currentLoc){renderSPCardHeader();renderSPList();}
+    saveLocal();
     updateSyncStatus('synced');
+    // Only re-render if user is NOT inside a location card
+    if(!currentLoc){
+      renderAll();
+    } else {
+      renderHeader();
+    }
   });
 }
 
@@ -1163,12 +1175,6 @@ function updateSyncStatus(status){
   else if(status==='offline')el.innerHTML=`<span style="color:var(--amber)">● Offline</span>`;
   else if(status==='connecting')el.innerHTML=`<span style="color:var(--text2)">● Connecting…</span>`;
   else el.innerHTML='';
-}
-
-// Sync-aware save (replaces original save)
-function save(){
-  try{localStorage.setItem(STORAGE_KEY,JSON.stringify(S));}catch(e){console.warn('Save failed',e);}
-  if(_syncEnabled){_localChange=true;pushSync();}
 }
 
 // ==================== SESSION UI ====================
