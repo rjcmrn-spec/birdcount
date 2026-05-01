@@ -1107,16 +1107,25 @@ function buildSyncPayload(){
 
 function applySyncPayload(data){
   if(!data)return;
-  // Decode seenAt keys
-  S.seenAt={};Object.entries(data.seenAt||{}).forEach(([k,v])=>{S.seenAt[k.replace(/_/g,n=>n)]=v;});
-  // Re-decode: Firebase safe keys used _ for . etc — keep as-is since species names don't have those chars
-  S.seenAt={};if(data.seenAt)Object.entries(data.seenAt).forEach(([k,v])=>{S.seenAt[k]=v;});
-  S.alsoAt={};if(data.alsoAt)Object.entries(data.alsoAt).forEach(([k,v])=>{S.alsoAt[k]=v instanceof Array?v:Object.values(v||{});});
-  S.notes={};if(data.notes)Object.entries(data.notes).forEach(([k,v])=>{S.notes[k]=v;});
-  S.skipped=data.skipped||{};
-  if(data.startTime)S.startTime=data.startTime;
-  // Merge times — preserve estArrive/estDepart from local
-  if(data.times){Object.entries(data.times).forEach(([lid,t])=>{if(!S.times[lid])S.times[lid]={};const local=S.times[lid];S.times[lid]={...local,...t,estArrive:t.estArrive||local.estArrive||null,estDepart:t.estDepart||local.estDepart||null};});}
+  try{
+    if(data.seenAt)S.seenAt=Object.assign({},data.seenAt);
+    if(data.alsoAt){S.alsoAt={};Object.entries(data.alsoAt).forEach(([k,v])=>{S.alsoAt[k]=Array.isArray(v)?v:Object.values(v||{});});}
+    if(data.notes)S.notes=Object.assign({},data.notes);
+    if(data.skipped)S.skipped=Object.assign({},data.skipped);
+    if(data.startTime)S.startTime=data.startTime;
+    if(data.times){
+      Object.entries(data.times).forEach(([lid,t])=>{
+        if(!t)return;
+        const local=S.times[lid]||{};
+        S.times[lid]={
+          arrive:t.arrive||null,depart:t.depart||null,
+          lat:t.lat||null,lng:t.lng||null,accuracy:t.accuracy||null,
+          estArrive:t.estArrive||local.estArrive||null,
+          estDepart:t.estDepart||local.estDepart||null
+        };
+      });
+    }
+  }catch(e){console.warn('applySyncPayload error:',e);}
 }
 
 async function pushSync(){
@@ -1129,7 +1138,9 @@ async function pushSync(){
 function attachSyncListener(){
   if(_syncListenerAttached||!db||!sessionCode)return;
   _syncListenerAttached=true;
+  let firstCall=true;
   window._fbOnValue(window._fbRef(db,`sessions/${sessionCode}/data`),(snap)=>{
+    if(firstCall){firstCall=false;return;}// skip initial fire to avoid overwriting local state
     if(_localChange){_localChange=false;return;}
     const data=snap.val();if(!data)return;
     applySyncPayload(data);
@@ -1195,18 +1206,25 @@ async function joinSession(){
   btn.textContent='Joining…';btn.disabled=true;
   const ok=await initFirebase();
   if(!ok){alert('Could not connect. Check your internet connection.');btn.textContent='Join Session';btn.disabled=false;return;}
-  // Check if session exists
-  const snap=await window._fbGet(window._fbRef(db,`sessions/${code}/data`));
-  if(!snap.exists()){alert(`Session "${code}" not found. Check the code and try again.`);btn.textContent='Join Session';btn.disabled=false;return;}
-  sessionCode=code;_syncEnabled=true;
-  localStorage.setItem(STORAGE_KEY+'_session',code);
-  // Apply remote state
-  applySyncPayload(snap.val());
-  save();
-  attachSyncListener();
-  hideSessionScreen();
-  updateSyncStatus('synced');
-  renderAll();
+  try{
+    const snap=await window._fbGet(window._fbRef(db,`sessions/${code}/data`));
+    if(!snap.exists()){alert(`Session "${code}" not found. Check the code and try again.`);btn.textContent='Join Session';btn.disabled=false;return;}
+    sessionCode=code;_syncEnabled=true;
+    localStorage.setItem(STORAGE_KEY+'_session',code);
+    // Apply remote state only if it has sighting data worth merging
+    const remoteData=snap.val();
+    if(remoteData&&Object.keys(remoteData.seenAt||{}).length>0){
+      applySyncPayload(remoteData);
+    }
+    save();
+    attachSyncListener();
+    hideSessionScreen();
+    updateSyncStatus('synced');
+    renderAll();
+  }catch(e){
+    alert('Error joining session. Please try again.');
+    btn.textContent='Join Session';btn.disabled=false;
+  }
 }
 
 function goOffline(){
