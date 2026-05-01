@@ -376,7 +376,10 @@ body{
       <div class="header-title">🦅 Bird Count</div>
       <div class="header-sub" id="dateline"></div>
     </div>
-    <div id="header-stats" style="text-align:right;font-size:12px;color:var(--text2)"></div>
+    <div style="text-align:right;font-size:12px">
+      <div id="sync-status"></div>
+      <div id="session-code-display" style="color:var(--text2);font-size:11px;margin-top:1px"></div>
+    </div>
   </div>
   <!-- Stats -->
   <div class="stats-bar" id="stats-bar"></div>
@@ -438,6 +441,14 @@ body{
 
   <!-- EXPORT VIEW -->
   <div id="view-export" style="display:none">
+    <div class="export-section">
+      <div class="export-title">Session</div>
+      <div id="session-info-panel" style="font-size:13px;color:var(--text2);margin-bottom:10px"></div>
+      <div class="export-btn-row">
+        <button class="btn-export" onclick="showSessionCodeAlert()"><span>🔑</span> Show/Share Code</button>
+        <button class="btn-export" onclick="leaveSession()"><span>↩️</span> Leave Session</button>
+      </div>
+    </div>
     <div class="export-section">
       <div class="export-title">Export Trip Data</div>
       <div class="export-btn-row">
@@ -669,6 +680,8 @@ function renderHeader(){
   const done=S.locations.filter(l=>{const{here,total}=seenHereCount(l.id);return total>0&&here===total;}).length;
   const skC=Object.keys(S.skipped).length;
   document.getElementById('dateline').textContent=new Date(S.startTime).toLocaleDateString([],{month:'short',day:'numeric',year:'numeric'});
+  const codeEl=document.getElementById('session-code-display');
+  if(codeEl)codeEl.textContent=sessionCode?`Code: ${sessionCode}`:'';
   document.getElementById('stats-bar').innerHTML=
     `<div class="stat-chip"><div class="stat-val">${seenAny}</div><div class="stat-lbl">seen</div></div>`+
     `<div class="stat-chip"><div class="stat-val">${totalListed}</div><div class="stat-lbl">listed</div></div>`+
@@ -679,6 +692,13 @@ function renderHeader(){
     const views=['locations','master','manage','export'];
     t.classList.toggle('active',views[i]===S.view||('locations'===S.view&&i===0));
   });
+  // Update session panel in export view
+  const sp=document.getElementById('session-info-panel');
+  if(sp){
+    if(sessionCode&&_syncEnabled)sp.innerHTML=`<span style="color:var(--green)">● Live sync active</span> · Session code: <strong>${sessionCode}</strong>`;
+    else if(sessionCode)sp.innerHTML=`Session code: <strong>${sessionCode}</strong> (offline)`;
+    else sp.innerHTML='No active session.';
+  }
 }
 
 function setView(v){
@@ -1026,8 +1046,217 @@ function buildReport(){
 function downloadReport(){const blob=new Blob([buildReport()],{type:'text/html'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`bird-count-report-${new Date().toISOString().slice(0,10)}.html`;document.body.appendChild(a);a.click();document.body.removeChild(a);}
 function resetAll(){if(!confirm('Reset all sightings, times, GPS and notes? Species assignments are kept.'))return;S.seenAt={};S.alsoAt={};S.notes={};S.skipped={};S.startTime=Date.now();S.locations.forEach(l=>{const t=S.times[l.id]||{};S.times[l.id]={arrive:null,depart:null,lat:null,lng:null,accuracy:null,estArrive:t.estArrive||l.ea||null,estDepart:t.estDepart||l.ed||null};});save();renderAll();}
 
+// ==================== FIREBASE SYNC ====================
+const FB_CONFIG={
+  apiKey:"AIzaSyAhVdAWLSRR3rpaFb4PVF1wUV77SMYu-AU",
+  authDomain:"birdcount-2025.firebaseapp.com",
+  databaseURL:"https://birdcount-2025-default-rtdb.firebaseio.com",
+  projectId:"birdcount-2025",
+  storageBucket:"birdcount-2025.firebasestorage.app",
+  messagingSenderId:"1072744840931",
+  appId:"1:1072744840931:web:4124f44919a90726450fd6"
+};
+
+let db=null,sessionCode=null,_syncEnabled=false,_localChange=false,_syncListenerAttached=false;
+
+async function initFirebase(){
+  try{
+    const {initializeApp}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
+    const {getDatabase,ref,set,onValue,get}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js');
+    window._fbApp=initializeApp(FB_CONFIG,FB_CONFIG.appId);
+    db=getDatabase(window._fbApp);
+    window._fbRef=ref;window._fbSet=set;window._fbOnValue=onValue;window._fbGet=get;
+    return true;
+  }catch(e){console.warn('Firebase init failed:',e);return false;}
+}
+
+function syncKey(k){return k.replace(/[.#$\[\]]/g,'_');}
+
+function buildSyncPayload(){
+  // Only sync the mutable sighting/time data — not the static route/species config
+  const times={};
+  S.locations.forEach(l=>{
+    const t=S.times[l.id]||{};
+    times[l.id]={arrive:t.arrive||null,depart:t.depart||null,lat:t.lat||null,lng:t.lng||null,accuracy:t.accuracy||null,estArrive:t.estArrive||null,estDepart:t.estDepart||null};
+  });
+  // Encode seenAt keys safely
+  const seenAt={};Object.entries(S.seenAt).forEach(([k,v])=>{seenAt[syncKey(k)]=v;});
+  const alsoAt={};Object.entries(S.alsoAt||{}).forEach(([k,v])=>{alsoAt[syncKey(k)]=v;});
+  const notes={};Object.entries(S.notes||{}).forEach(([k,v])=>{notes[syncKey(k)]=v;});
+  return{seenAt,alsoAt,notes,skipped:S.skipped||{},times,startTime:S.startTime,updatedAt:Date.now()};
+}
+
+function applySyncPayload(data){
+  if(!data)return;
+  // Decode seenAt keys
+  S.seenAt={};Object.entries(data.seenAt||{}).forEach(([k,v])=>{S.seenAt[k.replace(/_/g,n=>n)]=v;});
+  // Re-decode: Firebase safe keys used _ for . etc — keep as-is since species names don't have those chars
+  S.seenAt={};if(data.seenAt)Object.entries(data.seenAt).forEach(([k,v])=>{S.seenAt[k]=v;});
+  S.alsoAt={};if(data.alsoAt)Object.entries(data.alsoAt).forEach(([k,v])=>{S.alsoAt[k]=v instanceof Array?v:Object.values(v||{});});
+  S.notes={};if(data.notes)Object.entries(data.notes).forEach(([k,v])=>{S.notes[k]=v;});
+  S.skipped=data.skipped||{};
+  if(data.startTime)S.startTime=data.startTime;
+  // Merge times — preserve estArrive/estDepart from local
+  if(data.times){Object.entries(data.times).forEach(([lid,t])=>{if(!S.times[lid])S.times[lid]={};const local=S.times[lid];S.times[lid]={...local,...t,estArrive:t.estArrive||local.estArrive||null,estDepart:t.estDepart||local.estDepart||null};});}
+}
+
+async function pushSync(){
+  if(!_syncEnabled||!db||!sessionCode)return;
+  try{
+    await window._fbSet(window._fbRef(db,`sessions/${sessionCode}/data`),buildSyncPayload());
+  }catch(e){console.warn('Sync push failed:',e);}
+}
+
+function attachSyncListener(){
+  if(_syncListenerAttached||!db||!sessionCode)return;
+  _syncListenerAttached=true;
+  window._fbOnValue(window._fbRef(db,`sessions/${sessionCode}/data`),(snap)=>{
+    if(_localChange){_localChange=false;return;}
+    const data=snap.val();if(!data)return;
+    applySyncPayload(data);
+    save();
+    renderAll();
+    if(currentLoc){renderSPCardHeader();renderSPList();}
+    updateSyncStatus('synced');
+  });
+}
+
+function updateSyncStatus(status){
+  const el=document.getElementById('sync-status');if(!el)return;
+  if(status==='synced')el.innerHTML=`<span style="color:var(--green)">● Live</span>`;
+  else if(status==='offline')el.innerHTML=`<span style="color:var(--amber)">● Offline</span>`;
+  else if(status==='connecting')el.innerHTML=`<span style="color:var(--text2)">● Connecting…</span>`;
+  else el.innerHTML='';
+}
+
+// Override save to also push to Firebase
+const _origSave=save;
+window.save=function(){
+  _origSave();
+  if(_syncEnabled){_localChange=true;pushSync();}
+};
+
+// ==================== SESSION UI ====================
+function showSessionScreen(){
+  document.getElementById('main').style.display='none';
+  document.getElementById('header').style.display='none';
+  const screen=document.getElementById('session-screen');
+  screen.style.display='flex';
+}
+function hideSessionScreen(){
+  document.getElementById('session-screen').style.display='none';
+  document.getElementById('main').style.display='';
+  document.getElementById('header').style.display='';
+}
+
+async function createSession(){
+  const btn=document.getElementById('btn-create-session');
+  btn.textContent='Connecting…';btn.disabled=true;
+  const ok=await initFirebase();
+  if(!ok){alert('Could not connect to Firebase. Check your internet connection and try again.');btn.textContent='Create New Session';btn.disabled=false;return;}
+  // Generate 6-char code
+  const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code='';for(let i=0;i<6;i++)code+=chars[Math.floor(Math.random()*chars.length)];
+  sessionCode=code;_syncEnabled=true;
+  // Save session code to localStorage
+  localStorage.setItem(STORAGE_KEY+'_session',code);
+  // Push initial state
+  await pushSync();
+  attachSyncListener();
+  hideSessionScreen();
+  updateSyncStatus('synced');
+  renderAll();
+  // Show code to user
+  setTimeout(()=>alert(`Your session code is:\n\n${code}\n\nShare this code with others in your group so they can join.`),300);
+}
+
+async function joinSession(){
+  const code=(document.getElementById('join-code-inp').value||'').trim().toUpperCase();
+  if(code.length<4){alert('Please enter a valid session code.');return;}
+  const btn=document.getElementById('btn-join-session');
+  btn.textContent='Joining…';btn.disabled=true;
+  const ok=await initFirebase();
+  if(!ok){alert('Could not connect. Check your internet connection.');btn.textContent='Join Session';btn.disabled=false;return;}
+  // Check if session exists
+  const snap=await window._fbGet(window._fbRef(db,`sessions/${code}/data`));
+  if(!snap.exists()){alert(`Session "${code}" not found. Check the code and try again.`);btn.textContent='Join Session';btn.disabled=false;return;}
+  sessionCode=code;_syncEnabled=true;
+  localStorage.setItem(STORAGE_KEY+'_session',code);
+  // Apply remote state
+  applySyncPayload(snap.val());
+  save();
+  attachSyncListener();
+  hideSessionScreen();
+  updateSyncStatus('synced');
+  renderAll();
+}
+
+function goOffline(){
+  _syncEnabled=false;sessionCode=null;
+  localStorage.removeItem(STORAGE_KEY+'_session');
+  hideSessionScreen();
+  updateSyncStatus('');
+  renderAll();
+}
+
+async function tryResumeSession(){
+  const saved=localStorage.getItem(STORAGE_KEY+'_session');
+  if(!saved)return false;
+  const ok=await initFirebase();
+  if(!ok)return false;
+  try{
+    const snap=await window._fbGet(window._fbRef(db,`sessions/${saved}/data`));
+    if(!snap.exists())return false;
+    sessionCode=saved;_syncEnabled=true;
+    applySyncPayload(snap.val());
+    save();
+    attachSyncListener();
+    updateSyncStatus('synced');
+    return true;
+  }catch(e){return false;}
+}
+
+function showSessionCodeAlert(){
+  if(sessionCode)alert(`Session code:\n\n${sessionCode}\n\nShare this with others so they can join your count.`);
+  else alert('You are not in a session. Go to Export → Session to create or join one.');
+}
+function leaveSession(){
+  if(!confirm('Leave this session? You can rejoin with the same code later.'))return;
+  _syncEnabled=false;_syncListenerAttached=false;sessionCode=null;
+  localStorage.removeItem(STORAGE_KEY+'_session');
+  updateSyncStatus('');
+  showSessionScreen();
+}
+
 // ==================== BOOT ====================
-renderAll();
+async function boot(){
+  renderAll();
+  // Try to resume previous session silently
+  updateSyncStatus('connecting');
+  const resumed=await tryResumeSession();
+  if(resumed){renderAll();return;}
+  updateSyncStatus('');
+  // Show session screen on first load or if no session
+  showSessionScreen();
+}
+boot();
 </script>
+<!-- SESSION SCREEN -->
+<div id="session-screen" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:200;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px">
+  <div style="font-size:48px;margin-bottom:16px">🦅</div>
+  <div style="font-size:22px;font-weight:700;margin-bottom:6px;letter-spacing:-.4px">24-Hour Bird Count</div>
+  <div style="font-size:14px;color:var(--text2);margin-bottom:32px;text-align:center">Start a session or join your group</div>
+  <div style="width:100%;max-width:340px">
+    <button id="btn-create-session" onclick="createSession()" style="width:100%;padding:15px;border-radius:12px;border:none;background:var(--green);color:#fff;font-size:16px;font-weight:600;margin-bottom:8px;cursor:pointer;font-family:inherit">Create New Session</button>
+    <div style="font-size:11px;color:var(--text2);text-align:center;margin-bottom:20px">Start a new count — get a code to share with your group</div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px"><div style="flex:1;height:1px;background:var(--border)"></div><div style="font-size:12px;color:var(--text3)">or</div><div style="flex:1;height:1px;background:var(--border)"></div></div>
+    <input id="join-code-inp" type="text" placeholder="Enter session code" maxlength="6"
+      style="width:100%;padding:13px 14px;border-radius:10px;border:1.5px solid var(--border);background:var(--card);color:var(--text);font-size:18px;font-weight:600;letter-spacing:3px;text-align:center;font-family:inherit;margin-bottom:10px;outline:none;text-transform:uppercase"
+      oninput="this.value=this.value.toUpperCase()">
+    <button id="btn-join-session" onclick="joinSession()" style="width:100%;padding:15px;border-radius:12px;border:1.5px solid var(--green);background:var(--green-bg);color:var(--green-dk);font-size:16px;font-weight:600;margin-bottom:20px;cursor:pointer;font-family:inherit">Join Session</button>
+    <button onclick="goOffline()" style="width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:14px;cursor:pointer;font-family:inherit">Continue Offline (no sync)</button>
+    <div style="font-size:11px;color:var(--text3);text-align:center;margin-top:8px">Your data is always saved locally on this device</div>
+  </div>
+</div>
 </body>
 </html>
