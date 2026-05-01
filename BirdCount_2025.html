@@ -670,7 +670,7 @@ function saveLocal(){
 // Save locally AND push to Firebase - only call when sighting data changes
 function save(){
   saveLocal();
-  if(_syncEnabled){_lastPushedAt=Date.now();pushSync();}
+  if(_syncEnabled){pushSync();}
 }
 
 // ==================== HELPERS ====================
@@ -1137,11 +1137,13 @@ function applySyncPayload(data){
 }
 
 let _lastPushedAt=0;
+const _deviceId=Math.random().toString(36).slice(2);
 
 async function pushSync(){
   if(!_syncEnabled||!db||!sessionCode)return;
   try{
     const payload=buildSyncPayload();
+    payload.deviceId=_deviceId;
     _lastPushedAt=payload.updatedAt;
     await window._fbSet(window._fbRef(db,`sessions/${sessionCode}/data`),payload);
   }catch(e){console.warn('Sync push failed:',e);}
@@ -1153,18 +1155,19 @@ function attachSyncListener(){
   let lastApplied=0;
   window._fbOnValue(window._fbRef(db,`sessions/${sessionCode}/data`),(snap)=>{
     const data=snap.val();if(!data)return;
+    // Ignore our own pushes using device ID
+    if(data.deviceId===_deviceId)return;
     const remoteTs=data.updatedAt||0;
-    if(remoteTs<=lastApplied||remoteTs===_lastPushedAt)return;
+    if(remoteTs<=lastApplied)return;
     lastApplied=remoteTs;
-    // Apply data to state silently
     applySyncPayload(data);
     saveLocal();
     updateSyncStatus('synced');
-    // Only re-render if user is NOT inside a location card
     if(!currentLoc){
       renderAll();
     } else {
       renderHeader();
+      renderSPList();
     }
   });
 }
