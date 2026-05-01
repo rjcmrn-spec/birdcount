@@ -498,6 +498,24 @@ body{
   </div>
 </div>
 
+<!-- SESSION SCREEN -->
+<div id="session-screen" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:200;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px">
+  <div style="font-size:48px;margin-bottom:16px">🦅</div>
+  <div style="font-size:22px;font-weight:700;margin-bottom:6px;letter-spacing:-.4px">24-Hour Bird Count</div>
+  <div style="font-size:14px;color:var(--text2);margin-bottom:32px;text-align:center">Start a session or join your group</div>
+  <div style="width:100%;max-width:340px">
+    <button id="btn-create-session" onclick="createSession()" style="width:100%;padding:15px;border-radius:12px;border:none;background:var(--green);color:#fff;font-size:16px;font-weight:600;margin-bottom:8px;cursor:pointer;font-family:inherit">Create New Session</button>
+    <div style="font-size:11px;color:var(--text2);text-align:center;margin-bottom:20px">Start a new count — get a code to share with your group</div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px"><div style="flex:1;height:1px;background:var(--border)"></div><div style="font-size:12px;color:var(--text3)">or</div><div style="flex:1;height:1px;background:var(--border)"></div></div>
+    <input id="join-code-inp" type="text" placeholder="Enter session code" maxlength="6"
+      style="width:100%;padding:13px 14px;border-radius:10px;border:1.5px solid var(--border);background:var(--card);color:var(--text);font-size:18px;font-weight:600;letter-spacing:3px;text-align:center;font-family:inherit;margin-bottom:10px;outline:none;text-transform:uppercase"
+      oninput="this.value=this.value.toUpperCase()">
+    <button id="btn-join-session" onclick="joinSession()" style="width:100%;padding:15px;border-radius:12px;border:1.5px solid var(--green);background:var(--green-bg);color:var(--green-dk);font-size:16px;font-weight:600;margin-bottom:20px;cursor:pointer;font-family:inherit">Join Session</button>
+    <button onclick="goOffline()" style="width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:14px;cursor:pointer;font-family:inherit">Continue Offline (no sync)</button>
+    <div style="font-size:11px;color:var(--text3);text-align:center;margin-top:8px">Your data is always saved locally on this device</div>
+  </div>
+</div>
+
 <script>
 // ==================== DATA ====================
 const STORAGE_KEY='bc24v43_standalone';
@@ -1241,22 +1259,5 @@ async function boot(){
 }
 boot();
 </script>
-<!-- SESSION SCREEN -->
-<div id="session-screen" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:200;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px">
-  <div style="font-size:48px;margin-bottom:16px">🦅</div>
-  <div style="font-size:22px;font-weight:700;margin-bottom:6px;letter-spacing:-.4px">24-Hour Bird Count</div>
-  <div style="font-size:14px;color:var(--text2);margin-bottom:32px;text-align:center">Start a session or join your group</div>
-  <div style="width:100%;max-width:340px">
-    <button id="btn-create-session" onclick="createSession()" style="width:100%;padding:15px;border-radius:12px;border:none;background:var(--green);color:#fff;font-size:16px;font-weight:600;margin-bottom:8px;cursor:pointer;font-family:inherit">Create New Session</button>
-    <div style="font-size:11px;color:var(--text2);text-align:center;margin-bottom:20px">Start a new count — get a code to share with your group</div>
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px"><div style="flex:1;height:1px;background:var(--border)"></div><div style="font-size:12px;color:var(--text3)">or</div><div style="flex:1;height:1px;background:var(--border)"></div></div>
-    <input id="join-code-inp" type="text" placeholder="Enter session code" maxlength="6"
-      style="width:100%;padding:13px 14px;border-radius:10px;border:1.5px solid var(--border);background:var(--card);color:var(--text);font-size:18px;font-weight:600;letter-spacing:3px;text-align:center;font-family:inherit;margin-bottom:10px;outline:none;text-transform:uppercase"
-      oninput="this.value=this.value.toUpperCase()">
-    <button id="btn-join-session" onclick="joinSession()" style="width:100%;padding:15px;border-radius:12px;border:1.5px solid var(--green);background:var(--green-bg);color:var(--green-dk);font-size:16px;font-weight:600;margin-bottom:20px;cursor:pointer;font-family:inherit">Join Session</button>
-    <button onclick="goOffline()" style="width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:14px;cursor:pointer;font-family:inherit">Continue Offline (no sync)</button>
-    <div style="font-size:11px;color:var(--text3);text-align:center;margin-top:8px">Your data is always saved locally on this device</div>
-  </div>
-</div>
 </body>
 </html>
