@@ -1023,10 +1023,14 @@ function rebuildModalList(){
 
 // Event delegation on modal list — handles both touch and click
 document.addEventListener('DOMContentLoaded',()=>{
-  // Modal list delegation
+  // Modal list delegation — with scroll detection
   const modalList=document.getElementById('modal-list');
   if(modalList){
+    let mTouchStartY=0;let mDidScroll=false;
+    modalList.addEventListener('touchstart',(e)=>{mTouchStartY=e.touches[0].clientY;mDidScroll=false;},{passive:true});
+    modalList.addEventListener('touchmove',(e)=>{if(Math.abs(e.touches[0].clientY-mTouchStartY)>8)mDidScroll=true;},{passive:true});
     function handleModalTap(e){
+      if(mDidScroll)return;
       const item=e.target.closest('.modal-sp-item');
       if(!item||!_modalLid)return;
       const idx=parseInt(item.getAttribute('data-idx'));
@@ -1045,10 +1049,23 @@ document.addEventListener('DOMContentLoaded',()=>{
     modalList.addEventListener('click',handleModalTap);
   }
 
-  // Species list delegation
+  // Species list delegation — with scroll detection to prevent accidental taps
   const spList=document.getElementById('sp-list');
   if(spList){
+    let touchStartY=0;let touchStartX=0;let didScroll=false;
+    spList.addEventListener('touchstart',(e)=>{
+      touchStartY=e.touches[0].clientY;
+      touchStartX=e.touches[0].clientX;
+      didScroll=false;
+    },{passive:true});
+    spList.addEventListener('touchmove',(e)=>{
+      const dy=Math.abs(e.touches[0].clientY-touchStartY);
+      const dx=Math.abs(e.touches[0].clientX-touchStartX);
+      if(dy>8||dx>8)didScroll=true; // moved more than 8px = scrolling
+    },{passive:true});
     function handleSpTap(e){
+      // Ignore if user was scrolling
+      if(didScroll)return;
       // Note button
       const noteBtn=e.target.closest('.note-btn');
       if(noteBtn){
@@ -1069,10 +1086,14 @@ document.addEventListener('DOMContentLoaded',()=>{
     spList.addEventListener('click',handleSpTap);
   }
 
-  // Location list delegation
+  // Location list delegation — with scroll detection
   const locList=document.getElementById('loc-list');
   if(locList){
+    let lTouchStartY=0;let lDidScroll=false;
+    locList.addEventListener('touchstart',(e)=>{lTouchStartY=e.touches[0].clientY;lDidScroll=false;},{passive:true});
+    locList.addEventListener('touchmove',(e)=>{if(Math.abs(e.touches[0].clientY-lTouchStartY)>8)lDidScroll=true;},{passive:true});
     function handleLocTap(e){
+      if(lDidScroll)return;
       const item=e.target.closest('.loc-item');
       if(!item)return;
       const lid=item.getAttribute('data-locid');
