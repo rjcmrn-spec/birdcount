@@ -103,7 +103,9 @@ body{
   -webkit-user-select:none;user-select:none;
 }
 .loc-item:active{background:var(--bg)}
-.loc-item.active-loc{border-left:4px solid var(--green)}
+.loc-item.incidental-stop{border-top:2px solid var(--border);background:var(--bg)}
+.loc-item.incidental-stop .loc-name{color:var(--text2);font-style:italic}
+.loc-item.incidental-stop.active-loc{background:rgba(29,158,117,.08)}
 .loc-item.skipped{opacity:.5}
 .loc-num{font-size:11px;color:var(--text3);min-width:22px;text-align:right}
 .lc-dot-last{width:7px;height:7px;border-radius:50%;background:var(--red);flex-shrink:0}
@@ -592,6 +594,7 @@ const INITIAL_LOCATIONS=[
   {id:'l54',name:"Meyer Pond",icon:'💧',planned:true,ea:'20:30',ed:'20:33'},
   {id:'l52',name:"China Creek",icon:'💧',planned:true,ea:'20:34',ed:'20:49'},
   {id:'l55',name:"Powers Hwy - Owls",icon:'🌲',planned:true,ea:'22:05',ed:'22:20'},
+  {id:'l_inc',name:"🚗 Incidental",icon:'🚗',planned:true,ea:null,ed:null},
 ];
 
 const INITIAL_LOC_SPECIES={
@@ -642,6 +645,7 @@ const INITIAL_LOC_SPECIES={
   l54:["American Crow","American Robin","American Wigeon","Bald Eagle","Belted Kingfisher","Black Phoebe","Brown-headed Cowbird","Bushtit","Cedar Waxwing","Chestnut-backed Chickadee","Common Merganser","Common Yellowthroat","Downy Woodpecker","Eurasian Collared-Dove","Gadwall","Golden-crowned Kinglet","Great Blue Heron","Hooded Merganser","Hutton's Vireo","Mallard","Marsh Wren","Northern Flicker","Olive-sided Flycatcher","Orange-crowned Warbler","Pacific Wren","Pied-billed Grebe","Purple Finch","Red Crossbill","Red-breasted Nuthatch","Red-winged Blackbird","Ring-necked Duck","Ruby-crowned Kinglet","Song Sparrow","Spotted Towhee","Swainson's Thrush","Tree Swallow","Turkey Vulture","Western Flycatcher","White-crowned Sparrow","Wood Duck","Wrentit","Yellow-rumped Warbler"],
   l52:["Black-bellied Plover","Brown Pelican","Bushtit","Cackling Goose","California Gull","California Quail","Caspian Tern","Common Murre","Dunlin","Heermann's Gull","Hudsonian Whimbrel","Least Sandpiper","Marbled Godwit","Marbled Murrelet","Osprey","Pacific Loon","Peregrine Falcon","Red Knot","Red-necked Phalarope","Rhinoceros Auklet","Sanderling","Semipalmated Plover","Snowy Plover","Turkey Vulture","Western Gull","Western Sandpiper","White-winged Scoter"],
   l55:["Western Screech-Owl","Barred Owl"],
+  l_inc:[],
 };
 
 const BASE_SPECIES=["Snow Goose","Ross's Goose","Greater White-fronted Goose","Brant","Cackling Goose","Canada Goose","Trumpeter Swan","Tundra Swan","Wood Duck","Blue-winged Teal","Cinnamon Teal","Northern Shoveler","Gadwall","Eurasian Wigeon","American Wigeon","Mallard","Northern Pintail","Green-winged Teal","Canvasback","Redhead","Ring-necked Duck","Tufted Duck","Greater Scaup","Lesser Scaup","Harlequin Duck","Surf Scoter","White-winged Scoter","Black Scoter","Long-tailed Duck","Bufflehead","Common Goldeneye","Barrow's Goldeneye","Hooded Merganser","Common Merganser","Red-breasted Merganser","Ruddy Duck","Mountain Quail","California Quail","Wild Turkey","Ruffed Grouse","Greater Sage-Grouse","Sooty Grouse","Ring-necked Pheasant","Chukar","Pied-billed Grebe","Horned Grebe","Red-necked Grebe","Eared Grebe","Western Grebe","Clark's Grebe","Rock Pigeon","Band-tailed Pigeon","Eurasian Collared-Dove","Mourning Dove","Common Nighthawk","Common Poorwill","Black Swift","Vaux's Swift","White-throated Swift","Black-chinned Hummingbird","Anna's Hummingbird","Costa's Hummingbird","Calliope Hummingbird","Rufous Hummingbird","Allen's Hummingbird","Virginia Rail","Sora","American Coot","Yellow Rail","Sandhill Crane","Black-necked Stilt","American Avocet","Black Oystercatcher","Black-bellied Plover","American Golden-Plover","Pacific Golden-Plover","Killdeer","Semipalmated Plover","Snowy Plover","Hudsonian Whimbrel","Long-billed Curlew","Marbled Godwit","Ruddy Turnstone","Black Turnstone","Red Knot","Surfbird","Sanderling","Dunlin","Baird's Sandpiper","Least Sandpiper","Western Sandpiper","Pectoral Sandpiper","Semipalmated Sandpiper","Short-billed Dowitcher","Long-billed Dowitcher","Wilson's Snipe","Spotted Sandpiper","Solitary Sandpiper","Wandering Tattler","Lesser Yellowlegs","Willet","Greater Yellowlegs","Wilson's Phalarope","Red-necked Phalarope","Common Murre","Pigeon Guillemot","Marbled Murrelet","Cassin's Auklet","Rhinoceros Auklet","Tufted Puffin","Black-legged Kittiwake","Bonaparte's Gull","Franklin's Gull","Heermann's Gull","Short-billed Gull","Ring-billed Gull","Western Gull","California Gull","American Herring Gull","Iceland Gull","Glaucous-winged Gull","Glaucous Gull","Elegant Tern","Caspian Tern","Black Tern","Common Tern","Forster's Tern","Red-throated Loon","Pacific Loon","Common Loon","Fork-tailed Storm-Petrel","Sooty Shearwater","Brandt's Cormorant","Pelagic Cormorant","Double-crested Cormorant","American White Pelican","Brown Pelican","American Bittern","Snowy Egret","Black-crowned Night Heron","Green Heron","Great Egret","Great Blue Heron","White-faced Ibis","Turkey Vulture","Osprey","White-tailed Kite","Golden Eagle","Northern Harrier","Sharp-shinned Hawk","Cooper's Hawk","American Goshawk","Bald Eagle","Red-shouldered Hawk","Swainson's Hawk","Red-tailed Hawk","Rough-legged Hawk","Ferruginous Hawk","American Barn Owl","Flammulated Owl","Western Screech-Owl","Great Horned Owl","Northern Pygmy-Owl","Burrowing Owl","Spotted Owl","Barred Owl","Great Gray Owl","Long-eared Owl","Short-eared Owl","Northern Saw-whet Owl","Belted Kingfisher","Lewis's Woodpecker","Acorn Woodpecker","Williamson's Sapsucker","Red-naped Sapsucker","Red-breasted Sapsucker","American Three-toed Woodpecker","Black-backed Woodpecker","Downy Woodpecker","Hairy Woodpecker","White-headed Woodpecker","Northern Flicker","Pileated Woodpecker","American Kestrel","Merlin","Peregrine Falcon","Prairie Falcon","Ash-throated Flycatcher","Western Kingbird","Eastern Kingbird","Olive-sided Flycatcher","Western Wood-Pewee","Willow Flycatcher","Least Flycatcher","Hammond's Flycatcher","Gray Flycatcher","Dusky Flycatcher","Western Flycatcher","Black Phoebe","Say's Phoebe","Hutton's Vireo","Cassin's Vireo","Western Warbling Vireo","Red-eyed Vireo","Loggerhead Shrike","Northern Shrike","Canada Jay","Pinyon Jay","Steller's Jay","California Scrub-Jay","Clark's Nutcracker","Black-billed Magpie","American Crow","Common Raven","Black-capped Chickadee","Mountain Chickadee","Chestnut-backed Chickadee","Oak Titmouse","Horned Lark","Bank Swallow","Tree Swallow","Violet-green Swallow","Northern Rough-winged Swallow","Purple Martin","Barn Swallow","Cliff Swallow","Bushtit","Wrentit","Golden-crowned Kinglet","Ruby-crowned Kinglet","Cedar Waxwing","Red-breasted Nuthatch","White-breasted Nuthatch","Pygmy Nuthatch","Brown Creeper","Blue-gray Gnatcatcher","Rock Wren","Canyon Wren","Bewick's Wren","Northern House Wren","Pacific Wren","Marsh Wren","Gray Catbird","Sage Thrasher","Northern Mockingbird","European Starling","American Dipper","Western Bluebird","Mountain Bluebird","Townsend's Solitaire","Swainson's Thrush","Hermit Thrush","American Robin","Varied Thrush","House Sparrow","American Pipit","Evening Grosbeak","Gray-crowned Rosy-Finch","House Finch","Purple Finch","Cassin's Finch","Red Crossbill","Pine Siskin","Lesser Goldfinch","American Goldfinch","Grasshopper Sparrow","Black-throated Sparrow","Lark Sparrow","Chipping Sparrow","Brewer's Sparrow","Fox Sparrow","Dark-eyed Junco","White-crowned Sparrow","Golden-crowned Sparrow","White-throated Sparrow","Sagebrush Sparrow","Vesper Sparrow","Savannah Sparrow","Song Sparrow","Lincoln's Sparrow","California Towhee","Green-tailed Towhee","Spotted Towhee","Yellow-breasted Chat","Yellow-headed Blackbird","Western Meadowlark","Bullock's Oriole","Red-winged Blackbird","Tricolored Blackbird","Brown-headed Cowbird","Brewer's Blackbird","Great-tailed Grackle","Northern Waterthrush","Orange-crowned Warbler","Nashville Warbler","MacGillivray's Warbler","Common Yellowthroat","Northern Yellow Warbler","Yellow-rumped Warbler","Black-throated Gray Warbler","Townsend's Warbler","Hermit Warbler","Wilson's Warbler","Western Tanager","Black-headed Grosbeak","Lazuli Bunting"];
@@ -687,7 +691,8 @@ function setNote(lid,n,v){const k=noteKey(lid,n);if(v.trim())S.notes[k]=v.trim()
 function lastChanceStatus(name,lid){
   if(isSeen(name))return null;
   const idx=S.locations.findIndex(l=>l.id===lid);if(idx<0)return null;
-  const rem=S.locations.slice(idx).filter(l=>!S.skipped[l.id]&&(S.locSpecies[l.id]||[]).includes(name));
+  // Exclude Incidental stop from last-chance calculations
+  const rem=S.locations.slice(idx).filter(l=>l.id!=='l_inc'&&!S.skipped[l.id]&&(S.locSpecies[l.id]||[]).includes(name));
   if(rem.length===1)return'last';if(rem.length===2)return'second';return null;
 }
 function locLCSummary(lid){
@@ -757,8 +762,8 @@ function renderLocList(){
     else if(done)badge=`<span class="loc-badge badge-done">✓</span>`;
     else if(timeStr)badge=`<span class="loc-badge badge-count">${timeStr}</span>`;
     else badge=`<span class="loc-badge badge-count">${here}/${total}</span>`;
-    return`<div class="loc-item ${S.activeLoc===loc.id?'active-loc':''} ${sk?'skipped':''}" data-locid="${loc.id}">
-      <span class="loc-num">${gi+1}</span>${dot}
+    return`<div class="loc-item ${S.activeLoc===loc.id?'active-loc':''} ${sk?'skipped':''} ${loc.id==='l_inc'?'incidental-stop':''}" data-locid="${loc.id}">
+      <span class="loc-num">${loc.id==='l_inc'?'':gi+1}</span>${dot}
       <span class="loc-icon">${loc.icon}</span>
       <div class="loc-info"><div class="loc-name">${loc.name}</div>${timeStr?`<div class="loc-meta">${timeStr}</div>`:''}</div>
       ${badge}</div>`;
@@ -790,7 +795,8 @@ function renderSPCardHeader(){
   const sk=!!S.skipped[lid];
   const gi=S.locations.indexOf(loc);
   document.getElementById('sp-card-title').textContent=`${loc.icon} ${loc.name}`;
-  document.getElementById('sp-card-meta').textContent=`Stop ${gi+1} of ${S.locations.length} · ${here} here · ${elsewhere} elsewhere · ${total} total${sk?' · ⊘ Skipped':''}`;
+  const incNote=lid==='l_inc'?`<div style="font-size:11px;color:var(--text2);font-style:italic;margin-bottom:6px">Species seen between stops. Each sighting is auto-stamped with time &amp; GPS coordinates in the note.</div>`:'';
+  document.getElementById('sp-card-meta').innerHTML=`${incNote}Stop ${gi+1} of ${S.locations.length} · ${here} here · ${elsewhere} elsewhere · ${total} total${sk?' · ⊘ Skipped':''}`;
   document.getElementById('sp-prog').style.width=pct+'%';
   // Est times
   document.getElementById('est-times').innerHTML=
@@ -873,11 +879,31 @@ function renderSPList(){
     const where=fl?`<div class="sp-where">· ${fl.icon} ${fl.name}</div>`:'';
     const note=getNote(lid,name);
     const ns=name.replace(/'/g,"&#39;");
+    // For Incidental stop, parse coords from note and show a Maps link
+    let noteHTML='';
+    if(note){
+      if(lid==='l_inc'){
+        // Try to extract coords from note format: [HH:MM] lat, lng
+        const coordMatch=note.match(/\[(\d{2}:\d{2})\]\s*([-\d.]+),\s*([-\d.]+)/);
+        if(coordMatch){
+          const time=coordMatch[1];const lat=coordMatch[2];const lng=coordMatch[3];
+          const mapsUrl=`https://www.google.com/maps?q=${lat},${lng}`;
+          noteHTML=`<div class="note-text">${time} · <a href="${mapsUrl}" target="_blank" style="color:var(--blue);text-decoration:none">📍 ${lat}, ${lng}</a></div>`;
+        } else if(note.match(/\[\d{2}:\d{2}\]/)){
+          // Has time but no coords yet (GPS still acquiring)
+          noteHTML=`<div class="note-text">${note}</div>`;
+        } else {
+          noteHTML=`<div class="note-text">${note}</div>`;
+        }
+      } else {
+        noteHTML=`<div class="note-text">${note}</div>`;
+      }
+    }
     html+=`<div class="sp-item" data-name="${ns}" data-lid="${lid}">
       ${indHTML(st)}
       <div class="sp-info">
         <div class="sp-name ${nc}">${name}${isCustom(name)?` <span class="custom-badge">custom</span>`:''}</div>
-        ${where}${note?`<div class="note-text">${note}</div>`:''}
+        ${where}${noteHTML}
       </div>${badge}
       <button class="note-btn" data-note-name="${ns}" data-note-lid="${lid}">✎</button>
     </div>`;
@@ -893,7 +919,31 @@ function indHTML(st){
 
 function tapSP(name,lid){
   const st=getStateForLoc(name,lid);
-  if(st==='none'){S.seenAt[name]=lid;}
+  if(st==='none'){
+    S.seenAt[name]=lid;
+    // Auto-stamp time+GPS for Incidental sightings
+    if(lid==='l_inc'){
+      const timeStr=nowStr();
+      const existing=getNote(lid,name);
+      const prefix=`[${timeStr}]`;
+      if(!existing.includes(prefix)){
+        // Get GPS if available
+        if(navigator.geolocation){
+          navigator.geolocation.getCurrentPosition(pos=>{
+            const lat=pos.coords.latitude.toFixed(4);
+            const lng=pos.coords.longitude.toFixed(4);
+            setNote(lid,name,`${prefix} ${lat}, ${lng}`);
+            renderSPList();
+          },()=>{
+            setNote(lid,name,prefix);
+            renderSPList();
+          },{enableHighAccuracy:true,timeout:8000,maximumAge:0});
+        } else {
+          setNote(lid,name,prefix);
+        }
+      }
+    }
+  }
   else if(st==='here'){
     if(S.seenAt[name]===lid){const also=S.alsoAt[name]?[...S.alsoAt[name]]:[];if(also.length){S.seenAt[name]=also[0];S.alsoAt[name]=also.slice(1);}else{delete S.seenAt[name];}}
     else{if(S.alsoAt[name])S.alsoAt[name]=S.alsoAt[name].filter(id=>id!==lid);}
