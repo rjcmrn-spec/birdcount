@@ -210,7 +210,7 @@ body{
 .search-inp:focus{border-color:var(--green)}
 
 /* ===== SPECIES LIST ===== */
-.sp-list{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.sp-list{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:200px;border:2px solid red}
 .sp-section-hd{
   padding:5px 16px;font-size:10px;font-weight:600;letter-spacing:.06em;
   text-transform:uppercase;color:var(--text2);background:var(--bg);
@@ -792,7 +792,7 @@ if(spSearchEl)spSearchEl.value='';
   document.getElementById('view-locations').style.display='none';
   const card=document.getElementById('sp-card');card.classList.add('visible');
   renderSPCardHeader();
-alert('between calls');
+
 renderSPList();
 }
 
@@ -865,7 +865,7 @@ function renderSPCardHeader(){
 }
 
 function renderSPList(){
-  if(!currentLoc){alert('renderSPList: no currentLoc');return;}
+  if(!currentLoc)return;
   const lid=currentLoc;const sps=S.locSpecies[lid]||[];
   const q=(document.getElementById('sp-search')?.value||'').toLowerCase();
   const sf=S.spFilter;const so=S.spOrder;
@@ -923,10 +923,7 @@ function renderSPList(){
       <button class="note-btn" data-note-name="${ns}" data-note-lid="${lid}">✎</button>
     </div>`;
   }
- const spListEl=document.getElementById('sp-list');
-if(!spListEl){alert('sp-list element not found!');return;}
-alert(`html length=${html.length}, disp=${disp.length}, sps=${sps.length}, filter=${S.spFilter}`);
-spListEl.innerHTML=html||`<div class="empty">${sps.length?'No species match filter':'No species assigned'}</div>`;
+document.getElementById('sp-list').innerHTML=html||`<div class="empty">${sps.length?'No species match filter':'No species assigned'}</div>`;
 }
 
 function indHTML(st){
