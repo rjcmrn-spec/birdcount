@@ -124,9 +124,8 @@ body{
 .badge-count{color:var(--text3)}
 
 /* ===== SPECIES CARD VIEW ===== */
-#sp-card{display:none;flex-direction:column;position:fixed;top:0;left:0;right:0;bottom:0;z-index:50;background:var(--bg);overflow:auto}
+#sp-card{display:none;flex-direction:column;height:100%}
 #sp-card.visible{display:flex}
-
 .sp-card-hd{
   background:var(--card);border-bottom:1px solid var(--border);
   padding:12px 16px;flex-shrink:0;
@@ -211,7 +210,7 @@ body{
 .search-inp:focus{border-color:var(--green)}
 
 /* ===== SPECIES LIST ===== */
-.sp-list{overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1;min-height:150px}
+.sp-list{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .sp-section-hd{
   padding:5px 16px;font-size:10px;font-weight:600;letter-spacing:.06em;
   text-transform:uppercase;color:var(--text2);background:var(--bg);
@@ -220,10 +219,20 @@ body{
 .sp-item{
   display:flex;align-items:center;gap:10px;padding:11px 16px;
   background:var(--card);border-bottom:1px solid var(--border-light);
-  min-height:48px;cursor:pointer;-webkit-user-select:none;user-select:none;
+  min-height:48px;-webkit-user-select:none;user-select:none;
 }
 .sp-item:active{background:var(--bg)}
-.ind{
+.sp-tap-area{display:flex;align-items:center;gap:10px;flex:1;min-width:0;cursor:pointer}
+.sp-actions{display:flex;align-items:center;gap:2px;flex-shrink:0}
+.note-btn{
+  font-size:14px;color:var(--text3);background:none;border:none;
+  padding:6px 4px;cursor:pointer;-webkit-appearance:none;flex-shrink:0;
+}
+.rm-btn{
+  font-size:13px;color:var(--text3);background:none;border:none;
+  padding:6px 4px;cursor:pointer;-webkit-appearance:none;flex-shrink:0;
+  line-height:1;
+}
   width:22px;height:22px;border-radius:5px;display:flex;align-items:center;
   justify-content:center;flex-shrink:0;
 }
@@ -479,9 +488,17 @@ body{
       <button class="btn-modal-close" onclick="closeModal()">Done</button>
     </div>
     <div class="modal-search">
-      <input type="search" id="modal-search-inp" placeholder="Search..." oninput="rebuildModalList()">
+      <input type="search" id="modal-search-inp" placeholder="Search master list..." oninput="rebuildModalList()">
     </div>
     <div class="modal-list" id="modal-list"></div>
+    <!-- Freeform entry for species not on master list -->
+    <div style="padding:12px 16px;border-top:1px solid var(--border);flex-shrink:0;background:var(--card)">
+      <div style="font-size:11px;color:var(--text2);margin-bottom:6px">Not on the list? Type the name and tap Add:</div>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="modal-freeform-inp" placeholder="Species name..." style="flex:1;font-size:14px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-family:inherit;outline:none;">
+        <button onclick="addFreeformSpecies()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--green);background:var(--green-bg);color:var(--green-dk);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap">Add</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -513,7 +530,11 @@ body{
     <input id="join-code-inp" type="text" placeholder="Enter session code" maxlength="6"
       style="width:100%;padding:13px 14px;border-radius:10px;border:1.5px solid var(--border);background:var(--card);color:var(--text);font-size:18px;font-weight:600;letter-spacing:3px;text-align:center;font-family:inherit;margin-bottom:10px;outline:none;text-transform:uppercase"
       oninput="this.value=this.value.toUpperCase()">
-    <button id="btn-join-session" onclick="joinSession()" style="width:100%;padding:15px;border-radius:12px;border:1.5px solid var(--green);background:var(--green-bg);color:var(--green-dk);font-size:16px;font-weight:600;margin-bottom:20px;cursor:pointer;font-family:inherit">Join Session</button>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <button id="btn-join-session" onclick="joinSession(false)" style="flex:1;padding:13px;border-radius:12px;border:1.5px solid var(--green);background:var(--green-bg);color:var(--green-dk);font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">Join Session</button>
+      <button id="btn-join-viewer" onclick="joinSession(true)" style="flex:1;padding:13px;border-radius:12px;border:1.5px solid var(--border);background:var(--bg);color:var(--text2);font-size:15px;font-weight:500;cursor:pointer;font-family:inherit">View Only</button>
+    </div>
+    <div style="font-size:11px;color:var(--text2);text-align:center;margin-bottom:16px">View Only: follow along without making changes</div>
     <button onclick="goOffline()" style="width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:14px;cursor:pointer;font-family:inherit">Continue Offline (no sync)</button>
     <div style="font-size:11px;color:var(--text3);text-align:center;margin-top:8px">Your data is always saved locally on this device</div>
   </div>
@@ -714,6 +735,21 @@ function spSortRank(name,lid){const st=getStateForLoc(name,lid);if(st==='none'){
 function seenHereCount(lid){const sps=S.locSpecies[lid]||[];return{here:sps.filter(n=>getStateForLoc(n,lid)==='here').length,elsewhere:sps.filter(n=>getStateForLoc(n,lid)==='elsewhere').length,total:sps.length};}
 function totalStats(){const all=new Set();S.locations.forEach(l=>(S.locSpecies[l.id]||[]).forEach(n=>all.add(n)));return{seenAny:Object.keys(S.seenAt).length,totalListed:all.size};}
 
+// ==================== REMOVE SPECIES FROM LOCATION ====================
+function removeSpeciesFromLoc(lid,name){
+  if(!confirm(`Remove "${name}" from this stop's list?\n\nThis only removes it from this stop — it stays on the master list and at other stops.`))return;
+  S.locSpecies[lid]=(S.locSpecies[lid]||[]).filter(s=>s!==name);
+  // If seen here, reassign sighting
+  if(S.seenAt[name]===lid){
+    const also=(S.alsoAt[name]||[]).filter(id=>id!==lid);
+    if(also.length){S.seenAt[name]=also[0];S.alsoAt[name]=also.slice(1);}
+    else{delete S.seenAt[name];}
+  }
+  if(S.alsoAt[name])S.alsoAt[name]=(S.alsoAt[name]||[]).filter(id=>id!==lid);
+  delete S.notes[noteKey(lid,name)];
+  save();renderSPCardHeader();renderSPList();renderHeader();
+}
+
 // ==================== MAIN RENDER ====================
 function renderAll(){renderHeader();renderView();}
 
@@ -785,16 +821,12 @@ let currentLoc=null;
 
 function openSPCard(lid){
   currentLoc=lid;S.activeLoc=lid;
-  S.spFilter='all';S.spSearch='';
-const spSearchEl=document.getElementById('sp-search');
-if(spSearchEl)spSearchEl.value='';
+  S.spFilter='all';S.spSearch=''; // always reset filter when opening a stop
   saveLocal();
   const loc=S.locations.find(l=>l.id===lid);if(!loc)return;
   document.getElementById('view-locations').style.display='none';
   const card=document.getElementById('sp-card');card.classList.add('visible');
-  renderSPCardHeader();
-
-renderSPList();
+  renderSPCardHeader();renderSPList();
 }
 
 function closeSPCard(){
@@ -859,10 +891,11 @@ function renderSPCardHeader(){
     (lcCount?`<button class="f-btn ${sf==='lc'?'lc-on':''}" onclick="S.spFilter='lc';saveLocal();renderSPList()">⚠ Last (${lcCount})</button>`:'')+
     `<div class="order-toggle"><button class="o-btn ${S.spOrder==='alpha'?'on':''}" onclick="S.spOrder='alpha';saveLocal();renderSPList()">A–Z</button><button class="o-btn ${S.spOrder==='phylo'?'on':''}" onclick="S.spOrder='phylo';saveLocal();renderSPList()">Phylo</button></div>`;
   // Footer — add species, skip, remove stop
-  document.getElementById('sp-footer').innerHTML=
-    `<button class="btn-green" onclick="openAddModal('${lid}')">+ Add species</button>`+
-    `<button class="btn-gray ${sk?'btn-skip-active':''}" onclick="toggleSkip('${lid}')">${sk?'⊘ Undo skip':'⊘ Skip stop'}</button>`+
-    `<button class="btn-gray" style="color:var(--red);border-color:var(--red)" onclick="removeStop('${lid}')">✕ Remove stop</button>`;
+  document.getElementById('sp-footer').innerHTML=_viewOnly
+    ? `<div style="font-size:13px;color:var(--text2);padding:4px 0;text-align:center;width:100%">👁 View only mode — no edits allowed</div>`
+    : `<button class="btn-green" onclick="openAddModal('${lid}')">+ Add species</button>`+
+      `<button class="btn-gray ${sk?'btn-skip-active':''}" onclick="toggleSkip('${lid}')">${sk?'⊘ Undo skip':'⊘ Skip stop'}</button>`+
+      `<button class="btn-gray" style="color:var(--red);border-color:var(--red)" onclick="removeStop('${lid}')">✕ Remove stop</button>`;
 }
 
 function renderSPList(){
@@ -916,15 +949,15 @@ function renderSPList(){
       }
     }
     html+=`<div class="sp-item" data-name="${ns}" data-lid="${lid}">
-      ${indHTML(st)}
-      <div class="sp-info">
-        <div class="sp-name ${nc}">${name}${isCustom(name)?` <span class="custom-badge">custom</span>`:''}</div>
-        ${where}${noteHTML}
-      </div>${badge}
-      <button class="note-btn" data-note-name="${ns}" data-note-lid="${lid}">✎</button>
+      <div class="sp-tap-area">${indHTML(st)}<div class="sp-info"><div class="sp-name ${nc}">${name}${isCustom(name)?` <span class="custom-badge">custom</span>`:''}</div>${where}${noteHTML}</div></div>
+      ${badge}
+      <div class="sp-actions">
+        <button class="note-btn" data-note-name="${ns}" data-note-lid="${lid}">✎</button>
+        ${_viewOnly?'':` <button class="rm-btn" data-rm-name="${ns}" data-rm-lid="${lid}" title="Remove from this stop">✕</button>`}
+      </div>
     </div>`;
   }
-document.getElementById('sp-list').innerHTML=html||`<div class="empty">${sps.length?'No species match filter':'No species assigned'}</div>`;
+  document.getElementById('sp-list').innerHTML=html||`<div class="empty">${sps.length?'No species match filter':'No species assigned'}</div>`;
 }
 
 function indHTML(st){
@@ -934,6 +967,7 @@ function indHTML(st){
 }
 
 function tapSP(name,lid){
+  if(_viewOnly)return; // view-only mode
   const st=getStateForLoc(name,lid);
   if(st==='none'){
     S.seenAt[name]=lid;
@@ -977,12 +1011,12 @@ function editNote(name,lid){
 }
 
 // ==================== TIMES & GPS ====================
-function stampArrive(lid){S.times[lid].arrive=nowStr();save();renderSPCardHeader();if(navigator.geolocation){navigator.geolocation.getCurrentPosition(pos=>{S.times[lid].lat=pos.coords.latitude.toFixed(6);S.times[lid].lng=pos.coords.longitude.toFixed(6);S.times[lid].accuracy=Math.round(pos.coords.accuracy);save();renderSPCardHeader();},()=>{},{enableHighAccuracy:true,timeout:15000,maximumAge:0});}}
-function stampDepart(lid){S.times[lid].depart=nowStr();save();renderSPCardHeader();}
-function clearArrive(lid){S.times[lid].arrive=null;S.times[lid].lat=null;S.times[lid].lng=null;S.times[lid].accuracy=null;save();renderSPCardHeader();}
-function clearDepart(lid){S.times[lid].depart=null;save();renderSPCardHeader();}
-function clearGPS(lid){S.times[lid].lat=null;S.times[lid].lng=null;S.times[lid].accuracy=null;save();renderSPCardHeader();}
-function toggleSkip(lid){if(S.skipped[lid]){delete S.skipped[lid];}else{S.skipped[lid]=true;}save();renderSPCardHeader();renderSPList();renderHeader();}
+function stampArrive(lid){if(_viewOnly)return;S.times[lid].arrive=nowStr();save();renderSPCardHeader();if(navigator.geolocation){navigator.geolocation.getCurrentPosition(pos=>{S.times[lid].lat=pos.coords.latitude.toFixed(6);S.times[lid].lng=pos.coords.longitude.toFixed(6);S.times[lid].accuracy=Math.round(pos.coords.accuracy);save();renderSPCardHeader();},()=>{},{enableHighAccuracy:true,timeout:15000,maximumAge:0});}}
+function stampDepart(lid){if(_viewOnly)return;S.times[lid].depart=nowStr();save();renderSPCardHeader();}
+function clearArrive(lid){if(_viewOnly)return;S.times[lid].arrive=null;S.times[lid].lat=null;S.times[lid].lng=null;S.times[lid].accuracy=null;save();renderSPCardHeader();}
+function clearDepart(lid){if(_viewOnly)return;S.times[lid].depart=null;save();renderSPCardHeader();}
+function clearGPS(lid){if(_viewOnly)return;S.times[lid].lat=null;S.times[lid].lng=null;S.times[lid].accuracy=null;save();renderSPCardHeader();}
+function toggleSkip(lid){if(_viewOnly)return;if(S.skipped[lid]){delete S.skipped[lid];}else{S.skipped[lid]=true;}save();renderSPCardHeader();renderSPList();renderHeader();}
 
 function removeStop(lid){
   const loc=S.locations.find(l=>l.id===lid);if(!loc)return;
@@ -1132,6 +1166,15 @@ document.addEventListener('DOMContentLoaded',()=>{
     function handleSpTap(e){
       // Ignore if user was scrolling
       if(didScroll)return;
+      // Remove button
+      const rmBtn=e.target.closest('.rm-btn');
+      if(rmBtn){
+        e.stopPropagation();
+        const name=rmBtn.getAttribute('data-rm-name')?.replace(/&#39;/g,"'");
+        const lid=rmBtn.getAttribute('data-rm-lid');
+        if(name&&lid)removeSpeciesFromLoc(lid,name);
+        return;
+      }
       // Note button
       const noteBtn=e.target.closest('.note-btn');
       if(noteBtn){
@@ -1141,8 +1184,10 @@ document.addEventListener('DOMContentLoaded',()=>{
         if(name&&lid)editNote(name,lid);
         return;
       }
-      // Species item
-      const item=e.target.closest('.sp-item');
+      // Species tap area only
+      const tapArea=e.target.closest('.sp-tap-area');
+      if(!tapArea)return;
+      const item=tapArea.closest('.sp-item');
       if(!item)return;
       const name=item.getAttribute('data-name')?.replace(/&#39;/g,"'");
       const lid=item.getAttribute('data-lid');
@@ -1168,6 +1213,12 @@ document.addEventListener('DOMContentLoaded',()=>{
     locList.addEventListener('touchend',handleLocTap,{passive:true});
     locList.addEventListener('click',handleLocTap);
   }
+
+  // Freeform species entry — enter key support
+  const freeformInp=document.getElementById('modal-freeform-inp');
+  if(freeformInp){
+    freeformInp.addEventListener('keydown',(e)=>{if(e.key==='Enter'){e.preventDefault();addFreeformSpecies();}});
+  }
 });
 
 function addSP(name){
@@ -1175,6 +1226,31 @@ function addSP(name){
   if(!S.locSpecies[_modalLid])S.locSpecies[_modalLid]=[];
   if(!S.locSpecies[_modalLid].includes(name))S.locSpecies[_modalLid].push(name);
   save();rebuildModalList();renderSPCardHeader();
+}
+
+function addFreeformSpecies(){
+  if(!_modalLid)return;
+  const inp=document.getElementById('modal-freeform-inp');
+  const name=(inp?.value||'').trim();
+  if(!name)return;
+  // Add to master list if not already there
+  if(!allSpecies().some(s=>s.toLowerCase()===name.toLowerCase())){
+    S.masterList.push(name);
+    if(!S.customSpecies)S.customSpecies=[];
+    S.customSpecies.push(name);
+  }
+  // Add to location
+  if(!S.locSpecies[_modalLid])S.locSpecies[_modalLid]=[];
+  if(!S.locSpecies[_modalLid].some(s=>s.toLowerCase()===name.toLowerCase())){
+    // Use exact match from master if exists, otherwise use typed name
+    const existing=allSpecies().find(s=>s.toLowerCase()===name.toLowerCase());
+    S.locSpecies[_modalLid].push(existing||name);
+  }
+  inp.value='';
+  save();rebuildModalList();renderSPCardHeader();
+  // Brief visual confirmation
+  inp.placeholder='Added! Type another...';
+  setTimeout(()=>{inp.placeholder='Species name...';},2000);
 }
 
 // ==================== PHYLO ORDER ====================
@@ -1243,7 +1319,17 @@ function buildReport(){
   return`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Bird Count Report</title><style>body{font-family:-apple-system,sans-serif;color:#222;max-width:860px;margin:0 auto;padding:2rem;background:#fff}h1{font-size:24px;color:#1a4a16}h2{font-size:16px;color:#2c5828;margin:2rem 0 .8rem;border-bottom:2px solid #c8e0c4;padding-bottom:6px}</style></head><body><h1>🦅 24-Hour Bird Count</h1><p>${dateStr} · ${seen.length} species seen</p><h2>Locations</h2>${locRows}</body></html>`;
 }
 function downloadReport(){const blob=new Blob([buildReport()],{type:'text/html'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`bird-count-report-${new Date().toISOString().slice(0,10)}.html`;document.body.appendChild(a);a.click();document.body.removeChild(a);}
-function resetAll(){if(!confirm('Reset all sightings, times, GPS and notes? Species assignments are kept.'))return;S.seenAt={};S.alsoAt={};S.notes={};S.skipped={};S.startTime=Date.now();S.locations.forEach(l=>{const t=S.times[l.id]||{};S.times[l.id]={arrive:null,depart:null,lat:null,lng:null,accuracy:null,estArrive:t.estArrive||l.ea||null,estDepart:t.estDepart||l.ed||null};});save();renderAll();}
+function resetAll(){
+  if(_viewOnly){alert('Reset is not available in View Only mode.');return;}
+  // PIN protection — only the session creator should know this
+  if(sessionCode){
+    const pin=prompt('Enter admin PIN to reset all data:');
+    if(pin===null)return;
+    if(pin!=='7712'){alert('Incorrect PIN.');return;}
+  }
+  if(!confirm('Reset all sightings, times, GPS and notes? Species assignments are kept.'))return;
+  S.seenAt={};S.alsoAt={};S.notes={};S.skipped={};S.startTime=Date.now();S.locations.forEach(l=>{const t=S.times[l.id]||{};S.times[l.id]={arrive:null,depart:null,lat:null,lng:null,accuracy:null,estArrive:t.estArrive||l.ea||null,estDepart:t.estDepart||l.ed||null};});save();renderAll();
+}
 
 // ==================== FIREBASE SYNC ====================
 const FB_CONFIG={
@@ -1256,7 +1342,7 @@ const FB_CONFIG={
   appId:"1:1072744840931:web:4124f44919a90726450fd6"
 };
 
-let db=null,sessionCode=null,_syncEnabled=false,_localChange=false,_syncListenerAttached=false;
+let db=null,sessionCode=null,_syncEnabled=false,_localChange=false,_syncListenerAttached=false,_viewOnly=false;
 
 async function initFirebase(){
   try{
@@ -1288,7 +1374,15 @@ function buildSyncPayload(){
     const added=current.filter(s=>!initial.includes(s));
     if(added.length)locSpeciesAdded[l.id]=added;
   });
-  return{seenAt,alsoAt,notes,skipped:S.skipped||{},times,locSpeciesAdded,startTime:S.startTime,updatedAt:Date.now()};
+  // Sync locSpecies removals — initial species that were removed
+  const locSpeciesRemoved={};
+  S.locations.forEach(l=>{
+    const initial=INITIAL_LOC_SPECIES[l.id]||[];
+    const current=S.locSpecies[l.id]||[];
+    const removed=initial.filter(s=>!current.includes(s));
+    if(removed.length)locSpeciesRemoved[l.id]=removed;
+  });
+  return{seenAt,alsoAt,notes,skipped:S.skipped||{},times,locSpeciesAdded,locSpeciesRemoved,startTime:S.startTime,updatedAt:Date.now()};
 }
 
 function applySyncPayload(data){
@@ -1305,6 +1399,12 @@ function applySyncPayload(data){
         S.locSpecies[l.id]=[...(INITIAL_LOC_SPECIES[l.id]||[])];
       }
     });
+    // Apply removals first, then additions
+    if(data.locSpeciesRemoved){
+      Object.entries(data.locSpeciesRemoved).forEach(([lid,removed])=>{
+        if(S.locSpecies[lid])S.locSpecies[lid]=S.locSpecies[lid].filter(s=>!removed.includes(s));
+      });
+    }
     // Apply any added species from sync
     if(data.locSpeciesAdded){
       Object.entries(data.locSpeciesAdded).forEach(([lid,added])=>{
@@ -1383,8 +1483,9 @@ function attachSyncListener(){
 
 function updateSyncStatus(status){
   const el=document.getElementById('sync-status');if(!el)return;
-  if(status==='synced')el.innerHTML=`<span style="color:var(--green)">● Live</span>`;
-  else if(status==='offline')el.innerHTML=`<span style="color:var(--amber)">● Offline</span>`;
+  const viewBadge=_viewOnly?` <span style="font-size:10px;background:var(--amber-bg);color:var(--amber);border-radius:4px;padding:1px 5px">View Only</span>`:'';
+  if(status==='synced')el.innerHTML=`<span style="color:var(--green)">● Live</span>${viewBadge}`;
+  else if(status==='offline')el.innerHTML=`<span style="color:var(--amber)">● Offline</span>${viewBadge}`;
   else if(status==='connecting')el.innerHTML=`<span style="color:var(--text2)">● Connecting…</span>`;
   else el.innerHTML='';
 }
@@ -1423,18 +1524,20 @@ async function createSession(){
   setTimeout(()=>alert(`Your session code is:\n\n${code}\n\nShare this code with others in your group so they can join.`),300);
 }
 
-async function joinSession(){
+async function joinSession(viewerMode=false){
   const code=(document.getElementById('join-code-inp').value||'').trim().toUpperCase();
   if(code.length<4){alert('Please enter a valid session code.');return;}
-  const btn=document.getElementById('btn-join-session');
+  const btnId=viewerMode?'btn-join-viewer':'btn-join-session';
+  const btn=document.getElementById(btnId);
   btn.textContent='Joining…';btn.disabled=true;
   const ok=await initFirebase();
   if(!ok){alert('Could not connect. Check your internet connection.');btn.textContent='Join Session';btn.disabled=false;return;}
   try{
     const snap=await window._fbGet(window._fbRef(db,`sessions/${code}/data`));
     if(!snap.exists()){alert(`Session "${code}" not found. Check the code and try again.`);btn.textContent='Join Session';btn.disabled=false;return;}
-    sessionCode=code;_syncEnabled=true;
+    sessionCode=code;_syncEnabled=true;_viewOnly=viewerMode;
     localStorage.setItem(STORAGE_KEY+'_session',code);
+    localStorage.setItem(STORAGE_KEY+'_viewonly',viewerMode?'1':'0');
     // Ensure locSpecies is initialized from INITIAL_LOC_SPECIES before applying remote data
     S.locations.forEach(l=>{
       if(!S.locSpecies[l.id]||S.locSpecies[l.id].length===0){
@@ -1474,6 +1577,7 @@ async function tryResumeSession(){
     const snap=await window._fbGet(window._fbRef(db,`sessions/${saved}/data`));
     if(!snap.exists())return false;
     sessionCode=saved;_syncEnabled=true;
+    _viewOnly=localStorage.getItem(STORAGE_KEY+'_viewonly')==='1';
     applySyncPayload(snap.val());
     save();
     attachSyncListener();
