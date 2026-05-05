@@ -863,7 +863,7 @@ function renderSPCardHeader(){
 }
 
 function renderSPList(){
-  if(!currentLoc)return;
+  if(!currentLoc){alert('renderSPList: no currentLoc');return;}
   const lid=currentLoc;const sps=S.locSpecies[lid]||[];
   const q=(document.getElementById('sp-search')?.value||'').toLowerCase();
   const sf=S.spFilter;const so=S.spOrder;
