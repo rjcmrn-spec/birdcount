@@ -921,7 +921,10 @@ function renderSPList(){
       <button class="note-btn" data-note-name="${ns}" data-note-lid="${lid}">✎</button>
     </div>`;
   }
-  document.getElementById('sp-list').innerHTML=html||`<div class="empty">${sps.length?'No species match filter':'No species assigned'}</div>`;
+ const spListEl=document.getElementById('sp-list');
+if(!spListEl){alert('sp-list element not found!');return;}
+alert(`html length=${html.length}, disp=${disp.length}, sps=${sps.length}, filter=${S.spFilter}`);
+spListEl.innerHTML=html||`<div class="empty">${sps.length?'No species match filter':'No species assigned'}</div>`;
 }
 
 function indHTML(st){
