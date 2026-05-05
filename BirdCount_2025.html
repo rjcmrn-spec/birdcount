@@ -861,6 +861,8 @@ function renderSPCardHeader(){
 function renderSPList(){
   if(!currentLoc)return;
   const lid=currentLoc;const sps=S.locSpecies[lid]||[];
+  // DIAGNOSTIC
+  alert(`Debug: lid=${lid}, sps.length=${sps.length}, spFilter=${S.spFilter}, seenAt keys=${Object.keys(S.seenAt).length}`);
   const q=(document.getElementById('sp-search')?.value||'').toLowerCase();
   const sf=S.spFilter;const so=S.spOrder;
   let disp=sps.filter(name=>{
