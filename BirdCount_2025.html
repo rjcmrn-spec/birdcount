@@ -784,7 +784,9 @@ let currentLoc=null;
 
 function openSPCard(lid){
   currentLoc=lid;S.activeLoc=lid;
-  S.spFilter='all';S.spSearch=''; // always reset filter when opening a stop
+  S.spFilter='all';S.spSearch='';
+const spSearchEl=document.getElementById('sp-search');
+if(spSearchEl)spSearchEl.value='';
   saveLocal();
   const loc=S.locations.find(l=>l.id===lid);if(!loc)return;
   document.getElementById('view-locations').style.display='none';
