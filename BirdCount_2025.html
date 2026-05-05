@@ -1265,22 +1265,41 @@ async function initFirebase(){
 function syncKey(k){return k.replace(/[.#$\[\]]/g,'_');}
 
 function buildSyncPayload(){
-  // Only sync the mutable sighting/time data — not the static route/species config
   const times={};
   S.locations.forEach(l=>{
     const t=S.times[l.id]||{};
     times[l.id]={arrive:t.arrive||null,depart:t.depart||null,lat:t.lat||null,lng:t.lng||null,accuracy:t.accuracy||null,estArrive:t.estArrive||null,estDepart:t.estDepart||null};
   });
-  // Encode seenAt keys safely
   const seenAt={};Object.entries(S.seenAt).forEach(([k,v])=>{seenAt[syncKey(k)]=v;});
   const alsoAt={};Object.entries(S.alsoAt||{}).forEach(([k,v])=>{alsoAt[syncKey(k)]=v;});
   const notes={};Object.entries(S.notes||{}).forEach(([k,v])=>{notes[syncKey(k)]=v;});
-  return{seenAt,alsoAt,notes,skipped:S.skipped||{},times,startTime:S.startTime,updatedAt:Date.now()};
+  // Sync locSpecies additions — only species added beyond the initial list
+  const locSpeciesAdded={};
+  S.locations.forEach(l=>{
+    const initial=INITIAL_LOC_SPECIES[l.id]||[];
+    const current=S.locSpecies[l.id]||[];
+    const added=current.filter(s=>!initial.includes(s));
+    if(added.length)locSpeciesAdded[l.id]=added;
+  });
+  return{seenAt,alsoAt,notes,skipped:S.skipped||{},times,locSpeciesAdded,startTime:S.startTime,updatedAt:Date.now()};
 }
 
 function applySyncPayload(data){
   if(!data)return;
   try{
+    // Always ensure locSpecies is initialized from INITIAL_LOC_SPECIES
+    S.locations.forEach(l=>{
+      if(!S.locSpecies[l.id]||S.locSpecies[l.id].length===0){
+        S.locSpecies[l.id]=[...(INITIAL_LOC_SPECIES[l.id]||[])];
+      }
+    });
+    // Apply any added species from sync
+    if(data.locSpeciesAdded){
+      Object.entries(data.locSpeciesAdded).forEach(([lid,added])=>{
+        if(!S.locSpecies[lid])S.locSpecies[lid]=[...(INITIAL_LOC_SPECIES[lid]||[])];
+        added.forEach(s=>{if(!S.locSpecies[lid].includes(s))S.locSpecies[lid].push(s);});
+      });
+    }
     if(data.seenAt)S.seenAt=Object.assign({},data.seenAt);
     if(data.alsoAt){S.alsoAt={};Object.entries(data.alsoAt).forEach(([k,v])=>{S.alsoAt[k]=Array.isArray(v)?v:Object.values(v||{});});}
     if(data.notes)S.notes=Object.assign({},data.notes);
@@ -1399,6 +1418,12 @@ async function joinSession(){
     if(!snap.exists()){alert(`Session "${code}" not found. Check the code and try again.`);btn.textContent='Join Session';btn.disabled=false;return;}
     sessionCode=code;_syncEnabled=true;
     localStorage.setItem(STORAGE_KEY+'_session',code);
+    // Ensure locSpecies is initialized from INITIAL_LOC_SPECIES before applying remote data
+    S.locations.forEach(l=>{
+      if(!S.locSpecies[l.id]||S.locSpecies[l.id].length===0){
+        S.locSpecies[l.id]=[...(INITIAL_LOC_SPECIES[l.id]||[])];
+      }
+    });
     // Apply remote state only if it has sighting data worth merging
     const remoteData=snap.val();
     if(remoteData&&Object.keys(remoteData.seenAt||{}).length>0){
