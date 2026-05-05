@@ -791,7 +791,9 @@ if(spSearchEl)spSearchEl.value='';
   const loc=S.locations.find(l=>l.id===lid);if(!loc)return;
   document.getElementById('view-locations').style.display='none';
   const card=document.getElementById('sp-card');card.classList.add('visible');
-  renderSPCardHeader();renderSPList();
+  renderSPCardHeader();
+alert('between calls');
+renderSPList();
 }
 
 function closeSPCard(){
