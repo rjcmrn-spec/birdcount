@@ -124,7 +124,7 @@ body{
 .badge-count{color:var(--text3)}
 
 /* ===== SPECIES CARD VIEW ===== */
-#sp-card{display:none;flex-direction:column;position:fixed;top:0;left:0;right:0;bottom:0;z-index:50;background:var(--bg);overflow:hidden}
+#sp-card{display:none;flex-direction:column;position:fixed;top:0;left:0;right:0;bottom:0;z-index:50;background:var(--bg);overflow:auto}
 #sp-card.visible{display:flex}
 
 .sp-card-hd{
@@ -211,7 +211,7 @@ body{
 .search-inp:focus{border-color:var(--green)}
 
 /* ===== SPECIES LIST ===== */
-.sp-list{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:200px;max-height:50vh}
+.sp-list{overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1;min-height:150px}
 .sp-section-hd{
   padding:5px 16px;font-size:10px;font-weight:600;letter-spacing:.06em;
   text-transform:uppercase;color:var(--text2);background:var(--bg);
