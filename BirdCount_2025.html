@@ -783,7 +783,9 @@ function renderLocList(){
 let currentLoc=null;
 
 function openSPCard(lid){
-  currentLoc=lid;S.activeLoc=lid;saveLocal();
+  currentLoc=lid;S.activeLoc=lid;
+  S.spFilter='all';S.spSearch=''; // always reset filter when opening a stop
+  saveLocal();
   const loc=S.locations.find(l=>l.id===lid);if(!loc)return;
   document.getElementById('view-locations').style.display='none';
   const card=document.getElementById('sp-card');card.classList.add('visible');
@@ -861,8 +863,6 @@ function renderSPCardHeader(){
 function renderSPList(){
   if(!currentLoc)return;
   const lid=currentLoc;const sps=S.locSpecies[lid]||[];
-  // DIAGNOSTIC
-  alert(`Debug: lid=${lid}, sps.length=${sps.length}, spFilter=${S.spFilter}, seenAt keys=${Object.keys(S.seenAt).length}`);
   const q=(document.getElementById('sp-search')?.value||'').toLowerCase();
   const sf=S.spFilter;const so=S.spOrder;
   let disp=sps.filter(name=>{
@@ -1289,6 +1289,11 @@ function buildSyncPayload(){
 function applySyncPayload(data){
   if(!data)return;
   try{
+    // Save UI state that should never be overwritten by sync
+    const savedSpFilter=S.spFilter;
+    const savedSpOrder=S.spOrder;
+    const savedMasterFilter=S.masterFilter;
+    const savedMasterOrder=S.masterOrder;
     // Always ensure locSpecies is initialized from INITIAL_LOC_SPECIES
     S.locations.forEach(l=>{
       if(!S.locSpecies[l.id]||S.locSpecies[l.id].length===0){
@@ -1319,6 +1324,11 @@ function applySyncPayload(data){
         };
       });
     }
+    // Restore UI state — never let sync overwrite these
+    S.spFilter=savedSpFilter;
+    S.spOrder=savedSpOrder;
+    S.masterFilter=savedMasterFilter;
+    S.masterOrder=savedMasterOrder;
   }catch(e){console.warn('applySyncPayload error:',e);}
 }
 
