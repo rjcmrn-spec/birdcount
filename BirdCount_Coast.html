@@ -685,6 +685,32 @@ INITIAL_LOCATIONS.forEach(l=>{
   }
 });
 
+// Migration: fix any stop whose species list doesn't match INITIAL_LOC_SPECIES
+// Only resets if no sightings have been recorded at that stop (safe to overwrite)
+(function fixSpeciesMigration(){
+  let changed=false;
+  INITIAL_LOCATIONS.forEach(l=>{
+    if(l.id==='l_inc')return;
+    const initial=INITIAL_LOC_SPECIES[l.id]||[];
+    const current=S.locSpecies[l.id]||[];
+    // Check if any initial species are missing from current list
+    // or if current has species that were removed from initial (like old woodpecker list)
+    const hasSightingsHere=Object.keys(S.seenAt).some(sp=>
+      S.seenAt[sp]===l.id||(S.alsoAt[sp]||[]).includes(l.id)
+    );
+    if(!hasSightingsHere){
+      // Safe to reset — no sightings recorded here yet
+      const needsReset=initial.some(s=>!current.includes(s))||
+                        current.some(s=>!initial.includes(s)&&!S.customSpecies.includes(s));
+      if(needsReset){
+        S.locSpecies[l.id]=[...initial];
+        changed=true;
+      }
+    }
+  });
+  if(changed)saveLocal();
+})();
+
 // Save locally only - no Firebase push
 function saveLocal(){
   try{localStorage.setItem(STORAGE_KEY,JSON.stringify(S));}catch(e){console.warn('Save failed',e);}
