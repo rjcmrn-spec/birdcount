@@ -1,0 +1,1615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Coast Count">
+<title>Coast Bird Count</title>
+<style>
+/* ===== RESET & BASE ===== */
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#f5f5f0;
+  --card:#ffffff;
+  --border:#e0e0d8;
+  --border-light:#ece9e3;
+  --text:#1a1a18;
+  --text2:#666660;
+  --text3:#999990;
+  --green:#1D9E75;
+  --green-bg:rgba(29,158,117,.10);
+  --green-dk:#0F6E56;
+  --amber:#BA7517;
+  --amber-bg:rgba(186,117,23,.10);
+  --purple:#7F77DD;
+  --purple-bg:rgba(127,119,221,.10);
+  --blue:#1A73E8;
+  --blue-bg:rgba(26,115,232,.08);
+  --red:#DC2626;
+  --red-bg:rgba(220,38,38,.10);
+  --indiblue:#1D4ED8;
+  --indiblue-bg:rgba(29,78,216,.08);
+  --radius:12px;
+  --radius-sm:8px;
+}
+@media(prefers-color-scheme:dark){
+  :root{
+    --bg:#0f0f0d;--card:#1c1c1a;--border:#2e2e2a;--border-light:#252521;
+    --text:#f0f0ec;--text2:#9a9a90;--text3:#666660;
+    --green:#2EBF8A;--green-bg:rgba(46,191,138,.12);--green-dk:#5DCAA5;
+    --amber:#FAC775;--amber-bg:rgba(250,199,117,.10);
+    --red:#F87171;--red-bg:rgba(248,113,113,.12);
+    --indiblue:#60A5FA;--indiblue-bg:rgba(96,165,250,.10);
+    --blue:#7AB8F5;--blue-bg:rgba(122,184,245,.10);
+  }
+}
+html,body{height:100%;overflow:hidden}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;
+  font-size:15px;color:var(--text);background:var(--bg);
+  display:flex;flex-direction:column;
+}
+
+/* ===== LAYOUT ===== */
+#header{
+  background:var(--card);border-bottom:1px solid var(--border);
+  padding:env(safe-area-inset-top,0) 16px 0;
+  flex-shrink:0;z-index:10;
+}
+.header-inner{
+  display:flex;align-items:center;gap:10px;
+  padding:12px 0 10px;
+}
+.header-title{font-size:18px;font-weight:700;flex:1;letter-spacing:-.3px}
+.header-sub{font-size:11px;color:var(--text2);margin-top:1px}
+#main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:env(safe-area-inset-bottom,16px)}
+
+/* ===== STATS BAR ===== */
+.stats-bar{
+  display:flex;gap:8px;padding:12px 16px;overflow-x:auto;
+  -webkit-overflow-scrolling:touch;flex-shrink:0;
+}
+.stats-bar::-webkit-scrollbar{display:none}
+.stat-chip{
+  background:var(--card);border:1px solid var(--border);border-radius:10px;
+  padding:8px 12px;white-space:nowrap;flex-shrink:0;text-align:center;
+}
+.stat-val{font-size:20px;font-weight:700;line-height:1}
+.stat-lbl{font-size:10px;color:var(--text2);margin-top:2px}
+
+/* ===== NAV TABS ===== */
+#nav-tabs{
+  display:flex;background:var(--card);border-bottom:1px solid var(--border);
+  flex-shrink:0;overflow-x:auto;-webkit-overflow-scrolling:touch;
+}
+#nav-tabs::-webkit-scrollbar{display:none}
+.nav-tab{
+  flex:1;min-width:60px;padding:10px 6px;font-size:12px;font-weight:500;
+  text-align:center;color:var(--text2);border:none;background:none;
+  border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap;
+  -webkit-appearance:none;
+}
+.nav-tab.active{color:var(--green);border-bottom-color:var(--green)}
+
+/* ===== LOCATION LIST VIEW ===== */
+.loc-list{padding:8px 0}
+.loc-item{
+  display:flex;align-items:center;gap:10px;
+  padding:12px 16px;background:var(--card);
+  border-bottom:1px solid var(--border-light);
+  cursor:pointer;min-height:56px;
+  -webkit-user-select:none;user-select:none;
+}
+.loc-item:active{background:var(--bg)}
+.loc-item.incidental-stop{border-top:2px solid var(--border);background:var(--bg)}
+.loc-item.incidental-stop .loc-name{color:var(--text2);font-style:italic}
+.loc-item.incidental-stop.active-loc{background:rgba(29,158,117,.08)}
+.loc-item.skipped{opacity:.5}
+.loc-num{font-size:11px;color:var(--text3);min-width:22px;text-align:right}
+.lc-dot-last{width:7px;height:7px;border-radius:50%;background:var(--red);flex-shrink:0}
+.lc-dot-second{width:7px;height:7px;border-radius:50%;background:var(--indiblue);flex-shrink:0}
+.loc-icon{font-size:18px;flex-shrink:0}
+.loc-info{flex:1;min-width:0}
+.loc-name{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.loc-meta{font-size:11px;color:var(--text2);margin-top:1px}
+.loc-badge{
+  font-size:11px;padding:3px 8px;border-radius:6px;white-space:nowrap;flex-shrink:0;
+}
+.badge-done{background:rgba(59,130,17,.12);color:var(--green-dk)}
+@media(prefers-color-scheme:dark){.badge-done{color:var(--green)}}
+.badge-skip{background:rgba(100,100,100,.12);color:var(--text2)}
+.badge-new{background:var(--amber-bg);color:var(--amber)}
+.badge-count{color:var(--text3)}
+
+/* ===== SPECIES CARD VIEW ===== */
+#sp-card{display:none;flex-direction:column;height:100%}
+#sp-card.visible{display:flex}
+.sp-card-hd{
+  background:var(--card);border-bottom:1px solid var(--border);
+  padding:12px 16px;flex-shrink:0;
+}
+.sp-card-back{
+  display:flex;align-items:center;gap:6px;color:var(--green);
+  font-size:14px;font-weight:500;margin-bottom:8px;cursor:pointer;
+  background:none;border:none;padding:0;-webkit-appearance:none;
+}
+.sp-card-title{font-size:17px;font-weight:700;letter-spacing:-.3px;margin-bottom:4px}
+.sp-card-meta{font-size:12px;color:var(--text2);margin-bottom:8px}
+.prog-bar{height:3px;background:var(--border);border-radius:2px;margin-bottom:10px}
+.prog-fill{height:3px;background:var(--green);border-radius:2px;transition:width .3s}
+.est-times{
+  display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;
+}
+.est-block{
+  display:flex;align-items:center;gap:4px;background:var(--bg);
+  border:1px dashed var(--border);border-radius:8px;padding:5px 9px;flex:1;min-width:130px;
+}
+.est-block label{font-size:10px;color:var(--text2);white-space:nowrap}
+.est-block input{
+  font-size:12px;border:none;background:transparent;color:var(--text2);
+  width:58px;outline:none;font-family:inherit;
+}
+.time-row{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.time-block{
+  flex:1;min-width:140px;background:var(--bg);border:1px solid var(--border);
+  border-radius:10px;padding:8px 10px;display:flex;align-items:center;gap:6px;
+}
+.time-block label{font-size:11px;color:var(--text2);min-width:40px}
+.time-block input[type=time]{
+  font-size:14px;font-weight:500;border:none;background:transparent;
+  color:var(--text);font-family:inherit;outline:none;flex:1;
+}
+.btn-stamp{
+  font-size:12px;padding:4px 10px;border-radius:8px;border:1px solid var(--border);
+  background:var(--card);color:var(--text2);cursor:pointer;white-space:nowrap;
+  -webkit-appearance:none;font-family:inherit;
+}
+.btn-clear{background:none;border:none;color:var(--text3);font-size:14px;cursor:pointer;padding:2px 4px}
+.nav-link-row{margin-bottom:8px}
+.btn-nav{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:13px;padding:6px 12px;border-radius:9px;
+  border:1px solid var(--blue);background:var(--blue-bg);color:var(--blue);
+  text-decoration:none;-webkit-appearance:none;font-family:inherit;
+}
+.dur-chip{
+  font-size:11px;color:var(--text2);padding:3px 8px;
+  background:var(--bg);border:1px solid var(--border);border-radius:6px;white-space:nowrap;
+}
+.gps-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap}
+.gps-coords{font-size:12px;font-weight:500;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:5px 10px;flex:1}
+.gps-acc{font-size:10px;color:var(--text2)}
+
+/* ===== FILTER BAR ===== */
+.filter-bar{
+  display:flex;gap:6px;padding:10px 16px;overflow-x:auto;
+  background:var(--card);border-bottom:1px solid var(--border);flex-shrink:0;
+}
+.filter-bar::-webkit-scrollbar{display:none}
+.f-btn{
+  font-size:12px;padding:5px 11px;border-radius:20px;border:1px solid var(--border);
+  background:var(--bg);color:var(--text2);cursor:pointer;white-space:nowrap;
+  -webkit-appearance:none;font-family:inherit;flex-shrink:0;
+}
+.f-btn.on{border-color:var(--green);background:var(--green-bg);color:var(--green-dk)}
+@media(prefers-color-scheme:dark){.f-btn.on{color:var(--green)}}
+.f-btn.lc-on{border-color:var(--red);background:var(--red-bg);color:var(--red)}
+.order-toggle{display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-left:auto;flex-shrink:0}
+.o-btn{font-size:11px;padding:5px 9px;border:none;background:var(--bg);color:var(--text2);cursor:pointer;font-family:inherit;white-space:nowrap}
+.o-btn.on{background:var(--card);color:var(--green);font-weight:600}
+
+/* ===== SEARCH ===== */
+.search-wrap{padding:10px 16px;background:var(--card);border-bottom:1px solid var(--border);flex-shrink:0}
+.search-inp{
+  width:100%;font-size:15px;padding:9px 12px;border:1px solid var(--border);
+  border-radius:10px;background:var(--bg);color:var(--text);
+  font-family:inherit;outline:none;-webkit-appearance:none;
+}
+.search-inp:focus{border-color:var(--green)}
+
+/* ===== SPECIES LIST ===== */
+.sp-list{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.sp-section-hd{
+  padding:5px 16px;font-size:10px;font-weight:600;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--text2);background:var(--bg);
+  border-bottom:1px solid var(--border-light);
+}
+.sp-item{
+  display:flex;align-items:center;gap:10px;padding:11px 16px;
+  background:var(--card);border-bottom:1px solid var(--border-light);
+  min-height:48px;-webkit-user-select:none;user-select:none;
+}
+.sp-item:active{background:var(--bg)}
+.sp-tap-area{display:flex;align-items:center;gap:10px;flex:1;min-width:0;cursor:pointer}
+.sp-actions{display:flex;align-items:center;gap:2px;flex-shrink:0}
+.note-btn{
+  font-size:14px;color:var(--text3);background:none;border:none;
+  padding:6px 4px;cursor:pointer;-webkit-appearance:none;flex-shrink:0;
+}
+.rm-btn{
+  font-size:13px;color:var(--text3);background:none;border:none;
+  padding:6px 4px;cursor:pointer;-webkit-appearance:none;flex-shrink:0;
+  line-height:1;
+}
+  width:22px;height:22px;border-radius:5px;display:flex;align-items:center;
+  justify-content:center;flex-shrink:0;
+}
+.ind-none{border:1.5px solid var(--border)}
+.ind-else{border:1.5px solid var(--amber);background:var(--amber-bg)}
+.ind-here{border:1.5px solid var(--green);background:var(--green)}
+.chk{width:10px;height:7px;border-left:2px solid #fff;border-bottom:2px solid #fff;transform:rotate(-45deg) translate(1px,-1px)}
+.dash{width:9px;height:2px;background:var(--amber);border-radius:1px}
+.sp-info{flex:1;min-width:0}
+.sp-name{font-size:14px;line-height:1.3}
+.sp-name.last-text{color:var(--red);font-weight:700}
+.sp-name.second-text{color:var(--indiblue);font-weight:600}
+.sp-where{font-size:11px;color:var(--amber);margin-top:1px}
+@media(prefers-color-scheme:dark){.sp-where{color:var(--amber)}}
+.lc-badge{
+  font-size:10px;font-weight:700;border-radius:5px;padding:2px 7px;
+  white-space:nowrap;flex-shrink:0;
+}
+.lc-last{color:var(--red);background:var(--red-bg);border:0.5px solid var(--red)}
+.lc-second{color:var(--indiblue);background:var(--indiblue-bg);border:0.5px solid var(--indiblue)}
+.note-btn{
+  font-size:14px;color:var(--text3);background:none;border:none;
+  padding:4px;cursor:pointer;-webkit-appearance:none;flex-shrink:0;
+}
+.note-text{font-size:11px;color:var(--text2);font-style:italic;margin-top:3px}
+.note-inp{
+  width:100%;font-size:12px;padding:5px 8px;border:1px solid var(--green);
+  border-radius:6px;background:var(--bg);color:var(--text);
+  font-family:inherit;outline:none;resize:none;margin-top:4px;
+}
+
+/* ===== MASTER LIST ===== */
+.master-grid{padding:0}
+.m-item{
+  display:flex;align-items:flex-start;gap:10px;padding:10px 16px;
+  background:var(--card);border-bottom:1px solid var(--border-light);
+}
+.m-name{font-size:13px;font-weight:500}
+.m-sub{font-size:11px;color:var(--text2);margin-top:2px}
+.m-locs{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
+.m-pill{
+  font-size:10px;padding:1px 6px;border-radius:5px;
+  border:1px solid var(--border);color:var(--text2);
+}
+.m-pill-here{border-color:var(--green);color:var(--green-dk);background:var(--green-bg)}
+@media(prefers-color-scheme:dark){.m-pill-here{color:var(--green)}}
+.unassigned{font-size:11px;color:var(--text3);font-style:italic;margin-top:3px}
+
+/* ===== MANAGE VIEW ===== */
+.manage-item{
+  display:flex;align-items:center;gap:10px;padding:11px 16px;
+  background:var(--card);border-bottom:1px solid var(--border-light);
+}
+.manage-info{flex:1;min-width:0}
+.manage-name{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.manage-times{font-size:11px;color:var(--text2);margin-top:2px}
+.manage-nav{font-size:11px;color:var(--blue);text-decoration:none}
+
+/* ===== EXPORT VIEW ===== */
+.export-section{padding:16px;background:var(--card);border-bottom:1px solid var(--border);margin-bottom:8px}
+.export-title{font-size:13px;font-weight:600;margin-bottom:10px}
+.export-btn-row{display:flex;gap:8px;flex-wrap:wrap}
+.btn-export{
+  flex:1;min-width:130px;padding:12px 14px;border-radius:10px;
+  border:1px solid var(--border);background:var(--bg);
+  display:flex;align-items:center;gap:8px;cursor:pointer;
+  font-family:inherit;font-size:13px;font-weight:500;color:var(--text);
+  -webkit-appearance:none;
+}
+.btn-export:active{background:var(--border-light)}
+
+/* ===== ADD SPECIES MODAL ===== */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;
+  display:none;align-items:flex-end;justify-content:center;
+}
+.modal-overlay.show{display:flex}
+.modal-sheet{
+  background:var(--card);border-radius:20px 20px 0 0;
+  width:100%;max-height:85vh;display:flex;flex-direction:column;
+  padding-bottom:env(safe-area-inset-bottom,0);
+}
+.modal-drag{
+  width:36px;height:4px;background:var(--border);border-radius:2px;
+  margin:10px auto 0;flex-shrink:0;
+}
+.modal-hd{
+  padding:14px 16px 10px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:8px;flex-shrink:0;
+}
+.modal-title{font-size:16px;font-weight:600;flex:1}
+.btn-modal-close{
+  font-size:13px;color:var(--green);background:none;border:none;
+  cursor:pointer;padding:4px;-webkit-appearance:none;font-family:inherit;
+}
+.modal-search{
+  padding:10px 16px;border-bottom:1px solid var(--border);flex-shrink:0;
+}
+.modal-search input{
+  width:100%;font-size:15px;padding:9px 12px;border:1px solid var(--border);
+  border-radius:10px;background:var(--bg);color:var(--text);
+  font-family:inherit;outline:none;-webkit-appearance:none;
+}
+.modal-list{overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1}
+.modal-sp-item{
+  display:flex;align-items:center;gap:10px;padding:12px 16px;
+  border-bottom:1px solid var(--border-light);cursor:pointer;
+  background:var(--card);min-height:48px;
+}
+.modal-sp-item:active{background:var(--bg)}
+.modal-cb{
+  width:20px;height:20px;border-radius:4px;border:1.5px solid var(--border);
+  flex-shrink:0;display:flex;align-items:center;justify-content:center;
+}
+.modal-cb.checked{background:var(--green);border-color:var(--green)}
+
+/* ===== UTILITY ===== */
+.empty{padding:40px 16px;text-align:center;color:var(--text2);font-size:14px}
+.card-section{background:var(--card);border-bottom:1px solid var(--border);padding:12px 16px;margin-bottom:1px}
+.footer-actions{
+  padding:10px 16px;background:var(--card);border-top:1px solid var(--border);
+  display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0;
+}
+.btn-green{
+  font-size:13px;padding:8px 14px;border-radius:9px;border:1px solid var(--green);
+  background:var(--green-bg);color:var(--green-dk);cursor:pointer;
+  font-family:inherit;-webkit-appearance:none;flex:1;
+}
+@media(prefers-color-scheme:dark){.btn-green{color:var(--green)}}
+.btn-purple{
+  font-size:13px;padding:8px 14px;border-radius:9px;border:1px solid var(--purple);
+  background:var(--purple-bg);color:var(--purple);cursor:pointer;
+  font-family:inherit;-webkit-appearance:none;flex:1;
+}
+.btn-gray{
+  font-size:13px;padding:8px 14px;border-radius:9px;border:1px solid var(--border);
+  background:var(--bg);color:var(--text2);cursor:pointer;
+  font-family:inherit;-webkit-appearance:none;
+}
+.btn-skip-active{border-color:var(--red)!important;color:var(--red)!important;background:var(--red-bg)!important}
+.custom-badge{
+  font-size:10px;background:var(--purple-bg);color:var(--purple);
+  border-radius:4px;padding:1px 5px;
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div id="header">
+  <div class="header-inner">
+    <div style="flex:1">
+      <div class="header-title">🌊 Coast Count</div>
+      <div class="header-sub" id="dateline"></div>
+    </div>
+    <div style="text-align:right;font-size:12px">
+      <div id="sync-status"></div>
+      <div id="session-code-display" style="color:var(--text2);font-size:11px;margin-top:1px"></div>
+    </div>
+  </div>
+  <!-- Stats -->
+  <div class="stats-bar" id="stats-bar"></div>
+  <!-- Nav Tabs -->
+  <div id="nav-tabs">
+    <button class="nav-tab active" onclick="setView('locations')">📍 Stops</button>
+    <button class="nav-tab" onclick="setView('master')">📋 Master</button>
+    <button class="nav-tab" onclick="setView('manage')">⚙️ Manage</button>
+    <button class="nav-tab" onclick="setView('export')">⬇️ Export</button>
+  </div>
+</div>
+
+<!-- MAIN CONTENT -->
+<div id="main">
+
+  <!-- LOCATIONS VIEW -->
+  <div id="view-locations">
+    <div class="search-wrap" style="display:flex;gap:8px">
+      <input class="search-inp" style="flex:1" type="search" placeholder="Search stops..." id="loc-search" oninput="renderLocList()">
+      <button class="btn-green" style="flex:none;white-space:nowrap;padding:9px 12px" onclick="showAddStopModal()">+ Stop</button>
+    </div>
+    <div class="loc-list" id="loc-list"></div>
+  </div>
+
+  <!-- SPECIES CARD VIEW (slides in over locations) -->
+  <div id="sp-card">
+    <div class="sp-card-hd">
+      <button class="sp-card-back" onclick="closeSPCard()">‹ Back to stops</button>
+      <div class="sp-card-title" id="sp-card-title"></div>
+      <div class="sp-card-meta" id="sp-card-meta"></div>
+      <div class="prog-bar"><div class="prog-fill" id="sp-prog"></div></div>
+      <div class="est-times" id="est-times"></div>
+      <div id="nav-link-area"></div>
+      <div class="time-row" id="time-row"></div>
+      <div id="gps-area"></div>
+    </div>
+    <div class="filter-bar" id="sp-filter-bar"></div>
+    <div class="search-wrap">
+      <input class="search-inp" type="search" placeholder="Search species..." id="sp-search" oninput="renderSPList()">
+    </div>
+    <div class="sp-list" id="sp-list"></div>
+    <div class="footer-actions" id="sp-footer"></div>
+  </div>
+
+  <!-- MASTER LIST VIEW -->
+  <div id="view-master" style="display:none">
+    <div class="search-wrap" style="display:flex;gap:8px">
+      <input class="search-inp" style="flex:1" type="search" placeholder="Search master list..." id="master-search" oninput="renderMaster()">
+      <button class="btn-green" style="flex:none;white-space:nowrap;padding:9px 12px" onclick="showAddMasterModal()">+ Species</button>
+    </div>
+    <div class="filter-bar" id="master-filter-bar"></div>
+    <div class="master-grid" id="master-list"></div>
+  </div>
+
+  <!-- MANAGE VIEW -->
+  <div id="view-manage" style="display:none">
+    <div id="manage-list"></div>
+  </div>
+
+  <!-- EXPORT VIEW -->
+  <div id="view-export" style="display:none">
+    <div class="export-section">
+      <div class="export-title">Session</div>
+      <div id="session-info-panel" style="font-size:13px;color:var(--text2);margin-bottom:10px"></div>
+      <div class="export-btn-row">
+        <button class="btn-export" onclick="showSessionCodeAlert()"><span>🔑</span> Show/Share Code</button>
+        <button class="btn-export" onclick="leaveSession()"><span>↩️</span> Leave Session</button>
+      </div>
+    </div>
+    <div class="export-section">
+      <div class="export-title">Export Trip Data</div>
+      <div class="export-btn-row">
+        <button class="btn-export" onclick="downloadReport()"><span>📄</span> HTML Report</button>
+        <button class="btn-export" onclick="downloadJSON()"><span>💾</span> JSON Backup</button>
+      </div>
+    </div>
+    <div class="export-section">
+      <div class="export-title">Reset Data</div>
+      <button class="btn-export" style="color:#DC2626" onclick="resetAll()"><span>↺</span> Reset sightings & times</button>
+    </div>
+    <div class="card-section" style="font-size:12px;color:var(--text2)">
+      <strong>Tip:</strong> Data is saved locally on this device. Use JSON Backup to transfer data or keep a copy.
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<!-- ADD SPECIES MODAL -->
+<div class="modal-overlay" id="modal" onclick="modalBgClick(event)">
+  <div class="modal-sheet" id="modal-sheet">
+    <div class="modal-drag"></div>
+    <div class="modal-hd">
+      <div class="modal-title" id="modal-title">Add Species</div>
+      <button class="btn-modal-close" onclick="closeModal()">Done</button>
+    </div>
+    <div class="modal-search">
+      <input type="search" id="modal-search-inp" placeholder="Search master list..." oninput="rebuildModalList()">
+    </div>
+    <div class="modal-list" id="modal-list"></div>
+    <!-- Freeform entry for species not on master list -->
+    <div style="padding:12px 16px;border-top:1px solid var(--border);flex-shrink:0;background:var(--card)">
+      <div style="font-size:11px;color:var(--text2);margin-bottom:6px">Not on the list? Type the name and tap Add:</div>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="modal-freeform-inp" placeholder="Species name..." style="flex:1;font-size:14px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-family:inherit;outline:none;">
+        <button onclick="addFreeformSpecies()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--green);background:var(--green-bg);color:var(--green-dk);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap">Add</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- INPUT MODAL (add stop / add master species) -->
+<div class="modal-overlay" id="input-modal" onclick="inputModalBgClick(event)">
+  <div class="modal-sheet">
+    <div class="modal-drag"></div>
+    <div class="modal-hd">
+      <div class="modal-title" id="input-modal-title">Add</div>
+      <button class="btn-modal-close" onclick="closeInputModal()">Cancel</button>
+    </div>
+    <div style="padding:16px">
+      <input class="search-inp" id="input-modal-field" type="text" placeholder="" style="margin-bottom:12px">
+      <div id="input-modal-extra" style="margin-bottom:12px"></div>
+      <button class="btn-green" style="width:100%;padding:12px" id="input-modal-btn">Add</button>
+    </div>
+  </div>
+</div>
+
+<!-- SESSION SCREEN -->
+<div id="session-screen" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:200;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px">
+  <div style="font-size:48px;margin-bottom:16px">🦅</div>
+  <div style="font-size:22px;font-weight:700;margin-bottom:6px;letter-spacing:-.4px">24-Hour Bird Count</div>
+  <div style="font-size:14px;color:var(--text2);margin-bottom:32px;text-align:center">Start a session or join your group</div>
+  <div style="width:100%;max-width:340px">
+    <button id="btn-create-session" onclick="createSession()" style="width:100%;padding:15px;border-radius:12px;border:none;background:var(--green);color:#fff;font-size:16px;font-weight:600;margin-bottom:8px;cursor:pointer;font-family:inherit">Create New Session</button>
+    <div style="font-size:11px;color:var(--text2);text-align:center;margin-bottom:20px">Start a new count — get a code to share with your group</div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px"><div style="flex:1;height:1px;background:var(--border)"></div><div style="font-size:12px;color:var(--text3)">or</div><div style="flex:1;height:1px;background:var(--border)"></div></div>
+    <input id="join-code-inp" type="text" placeholder="Enter session code" maxlength="6"
+      style="width:100%;padding:13px 14px;border-radius:10px;border:1.5px solid var(--border);background:var(--card);color:var(--text);font-size:18px;font-weight:600;letter-spacing:3px;text-align:center;font-family:inherit;margin-bottom:10px;outline:none;text-transform:uppercase"
+      oninput="this.value=this.value.toUpperCase()">
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <button id="btn-join-session" onclick="joinSession(false)" style="flex:1;padding:13px;border-radius:12px;border:1.5px solid var(--green);background:var(--green-bg);color:var(--green-dk);font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">Join Session</button>
+      <button id="btn-join-viewer" onclick="joinSession(true)" style="flex:1;padding:13px;border-radius:12px;border:1.5px solid var(--border);background:var(--bg);color:var(--text2);font-size:15px;font-weight:500;cursor:pointer;font-family:inherit">View Only</button>
+    </div>
+    <div style="font-size:11px;color:var(--text2);text-align:center;margin-bottom:16px">View Only: follow along without making changes</div>
+    <button onclick="goOffline()" style="width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:14px;cursor:pointer;font-family:inherit">Continue Offline (no sync)</button>
+    <div style="font-size:11px;color:var(--text3);text-align:center;margin-top:8px">Your data is always saved locally on this device</div>
+  </div>
+</div>
+
+<script>
+// ==================== DATA ====================
+const STORAGE_KEY='bc24v43_coast';
+
+const LOC_COORDS={
+  l01:[42.660182,-122.088331],l02:[42.663740,-122.088900],l03:[42.687380,-122.078879],
+  l04:[42.733971,-121.988199],l05:[42.732836,-121.977384],l06:[42.668876,-121.980474],
+  l07:[42.643627,-121.944597],l08:[42.633019,-121.937044],l09:[42.889179,-121.712167],
+  l10:[42.929061,-121.586194],l11:[43.043584,-121.064343],l12:[43.121693,-120.850539],
+  l13:[43.071178,-120.819297],l14:[43.370868,-121.069400],l15:[43.546979,-121.144155],
+  l16:[43.491101,-121.059711],l17:[43.372972,-121.066199],l18:[43.177209,-121.035090],
+  l19:[42.929061,-121.586194],l20:[42.889179,-121.712167],l22:[42.581136,-121.931281],
+  l23:[42.385315,-121.809617],l24:[42.398107,-121.815200],l24b:[42.434512,-121.830731],
+  l25:[42.218917,-121.788534],l27:[42.155306,-121.830427],l29:[42.037763,-121.802105],
+  l30:[42.025211,-121.777655],l31:[42.000524,-121.626839],l33:[42.453267,-122.098478],
+  l36b:[42.377829,-122.359842],l37:[42.417672,-122.865887],l38:[42.438728,-122.874263],
+  l39:[42.432586,-122.910212],l40:[42.421981,-122.900391],l41:[42.468823,-122.945304],
+  l42:[43.072212,-123.595570],l43:[43.065101,-123.653364],l45:[43.135420,-124.342832],
+  l46b:[43.163322,-124.361899],l46:[43.130912,-124.401341],l51:[43.105298,-124.445929],
+  l50:[43.122269,-124.428297],l49:[43.119154,-124.425405],l48:[43.120693,-124.422677],
+  l47:[43.119972,-124.409151],l54:[43.074689,-124.429322],l52:[43.072665,-124.435100],
+  l55:[42.967332,-124.112133],
+  l_4mile_screech:[42.991662,-124.347674],
+  l_4mile_upper:[42.987822,-124.333112],
+  l_grass:[42.492242,-122.893585],
+  l_cablkrd:["Greater Sage-Grouse","Sagebrush Sparrow","Vesper Sparrow","Brewer's Sparrow","Sage Thrasher","Horned Lark","Loggerhead Shrike"],
+};
+
+function navURL(lid){const c=LOC_COORDS[lid];return c?`https://www.google.com/maps/dir/?api=1&destination=${c[0]},${c[1]}`:null;}
+
+const INITIAL_LOCATIONS=[
+  {id:'l_4mile_screech',name:"Fourmile Road - Western Screech Owl Stop",icon:'🌲',planned:true,ea:'04:00',ed:'05:00'},
+  {id:'l_4mile_upper',name:"Upper Fourmile Road",icon:'🌲',planned:true,ea:'05:15',ed:'05:45'},
+  {id:'l52',name:"China Creek",icon:'💧',planned:true,ea:'06:10',ed:'06:20'},
+  {id:'l54',name:"Meyer Pond",icon:'💧',planned:true,ea:'06:21',ed:'06:26'},
+  {id:'l51',name:"Face Rock Complex",icon:'🪨',planned:true,ea:'06:32',ed:'06:52'},
+  {id:'l50',name:"South Jetty",icon:'🌊',planned:true,ea:'06:59',ed:'07:09'},
+  {id:'l49',name:"Redmon Pond",icon:'💧',planned:true,ea:'07:10',ed:'07:11'},
+  {id:'l48',name:"Edgewater/Jetty Road",icon:'🌊',planned:true,ea:'07:12',ed:'07:17'},
+  {id:'l47',name:"Bandon Town-Sewage Plant Cove",icon:'🏙',planned:true,ea:'07:18',ed:'07:19'},
+  {id:'l46',name:"Bandon Marsh",icon:'🌾',planned:true,ea:'07:21',ed:'07:31'},
+  {id:'l46b',name:"Bandon NWR--Ni-Les'tun Overlook",icon:'🌾',planned:true,ea:'07:36',ed:'07:46'},
+  {id:'l45',name:"42S",icon:'🛣️',planned:true,ea:null,ed:null},
+  {id:'l43',name:"Summit",icon:'⛰️',planned:true,ea:'09:06',ed:'09:16'},
+  {id:'l42',name:"Ollala-Ireland Road",icon:'🛣️',planned:true,ea:null,ed:null},
+  {id:'l41',name:"Lower Table Rock",icon:'🪨',planned:true,ea:'11:11',ed:'11:31'},
+  {id:'l_grass',name:"Grasshopper Sparrow Stop",icon:'🌾',planned:true,ea:'11:39',ed:'11:44'},
+  {id:'l39',name:"White City Lagoons",icon:'💧',planned:true,ea:'11:52',ed:'12:02'},
+  {id:'l40',name:"Whetstone Savannah",icon:'🌾',planned:true,ea:'12:07',ed:'12:12'},
+  {id:'l37',name:"Whetstone Pond",icon:'💧',planned:true,ea:'12:18',ed:'12:23'},
+  {id:'l36b',name:"North Fork CG",icon:'🌲',planned:true,ea:'12:58',ed:'13:08'},
+  {id:'l33',name:"Uhtoff Cabin",icon:'🏠',planned:true,ea:'13:27',ed:'13:32'},
+  {id:'l27',name:"Miller Island",icon:'🌾',planned:true,ea:'14:04',ed:'14:19'},
+  {id:'l29',name:"Township Road",icon:'🛣️',planned:true,ea:'14:34',ed:'14:44'},
+  {id:'l30',name:"Straits Drain - Lower Klamath NWR",icon:'🛣️',planned:true,ea:'14:51',ed:'15:01'},
+  {id:'l31',name:"Lower Klamath NWR--White Lake (OR side)",icon:'🌾',planned:true,ea:'15:11',ed:'15:16'},
+  {id:'l25',name:"Lake Ewauna & Link River",icon:'💧',planned:true,ea:'15:42',ed:'15:52'},
+  {id:'l23',name:"Elijah Spot #1",icon:'📍',planned:true,ea:'16:08',ed:'16:13'},
+  {id:'l24',name:"Elijah Spot #2",icon:'📍',planned:true,ea:'16:17',ed:'16:22'},
+  {id:'l24b',name:"Elijah Spot #3",icon:'📍',planned:true,ea:'16:34',ed:'16:39'},
+  {id:'l22',name:"Wood River Wetland",icon:'💧',planned:true,ea:'17:15',ed:'17:30'},
+  {id:'l09',name:"Klamath Marsh Stop",icon:'🌾',planned:true,ea:'18:03',ed:'18:13'},
+  {id:'l19',name:"Military Road",icon:'🛣️',planned:true,ea:'18:22',ed:'18:32'},
+  {id:'l18',name:"Paulina Marsh",icon:'🌾',planned:true,ea:'19:17',ed:'19:22'},
+  {id:'l17',name:"Fort Rock",icon:'🪨',planned:true,ea:'19:43',ed:'19:48'},
+  {id:'l_cablkrd',name:"Cabin Lake Road",icon:'🌲',planned:true,ea:null,ed:null},
+  {id:'l16',name:"Cabin Lake",icon:'🏕️',planned:true,ea:'20:09',ed:'20:19'},
+  {id:'l15',name:"NF-2233 - Blk-backed Woodpecker",icon:'🌲',planned:true,ea:'20:49',ed:'20:59'},
+  {id:'l14',name:"Fort Rock Road - Burrowing Owl",icon:'🪨',planned:true,ea:'21:42',ed:'21:52'},
+  {id:'l11',name:"East Bay Road - Flammulated Owl",icon:'🛣️',planned:true,ea:'22:27',ed:'22:42'},
+  {id:'l10',name:"Military Road - Great Gray",icon:'🛣️',planned:true,ea:'23:32',ed:'23:42'},
+  {id:'l20',name:"Klamath Marsh Stop #2",icon:'🌾',planned:true,ea:'23:50',ed:'00:00'},
+  {id:'l_inc',name:"Incidental",icon:'🚗',planned:true,ea:null,ed:null},
+];
+
+const INITIAL_LOC_SPECIES={
+  l01:["Barred Owl","Flammulated Owl","Great Gray Owl","Sora","Virginia Rail","Wilson's Snipe","Yellow Rail"],
+  l02:["Barred Owl","Flammulated Owl","Great Gray Owl","Yellow Rail"],
+  l03:["Common Poorwill","Flammulated Owl","Great Horned Owl","Wilson's Snipe"],
+  l04:["American Dipper"],l05:["Western Screech-Owl"],
+  l06:["American Barn Owl","Long-eared Owl"],
+  l07:["American Barn Owl","Common Poorwill","Northern Saw-whet Owl"],
+  l08:["American Barn Owl","Common Poorwill","Northern Saw-whet Owl"],
+  l09:["American Bittern","Canada Goose","Common Poorwill","Great Horned Owl","Killdeer","Mallard","Marsh Wren","Ring-necked Duck","Short-eared Owl","Sora","Virginia Rail","Wilson's Snipe","Yellow Rail"],
+  l10:["Great Gray Owl"],l11:["Common Poorwill","Flammulated Owl","Northern Saw-whet Owl"],
+  l12:["Brewer's Sparrow","Greater Sage-Grouse","Sage Thrasher","Sagebrush Sparrow","Vesper Sparrow"],
+  l13:["Black-throated Sparrow","Canyon Wren","Golden Eagle","Rock Wren"],
+  l14:["American Barn Owl","Black-throated Sparrow","Burrowing Owl","Chukar","Sagebrush Sparrow","Vesper Sparrow"],
+  l15:["Black-backed Woodpecker","Black-throated Gray Warbler","Chipping Sparrow","Gray Flycatcher","Green-tailed Towhee","Hermit Thrush","Mountain Chickadee","Red Crossbill","Yellow-rumped Warbler"],
+  l16:["American Kestrel","American Robin","Brewer's Sparrow","Cassin's Finch","Cassin's Vireo","Chipping Sparrow","Clark's Nutcracker","Dark-eyed Junco","Evening Grosbeak","Ferruginous Hawk","Golden Eagle","Gray Flycatcher","Greater Sage-Grouse","Green-tailed Towhee","Hairy Woodpecker","Horned Lark","Lazuli Bunting","Lewis's Woodpecker","Lincoln's Sparrow","Loggerhead Shrike","Mountain Bluebird","Mountain Chickadee","Mourning Dove","Nashville Warbler","Northern Flicker","Pine Siskin","Pinyon Jay","Prairie Falcon","Pygmy Nuthatch","Red Crossbill","Red-breasted Nuthatch","Red-tailed Hawk","Rock Wren","Sage Thrasher","Sagebrush Sparrow","Say's Phoebe","Townsend's Solitaire","Vesper Sparrow","Western Bluebird","Western Tanager","White-breasted Nuthatch","White-headed Woodpecker","Williamson's Sapsucker","Wilson's Warbler","Yellow-rumped Warbler"],
+  l17:["American Barn Owl","Black-chinned Hummingbird","Black-throated Sparrow","Brewer's Blackbird","Brewer's Sparrow","Burrowing Owl","California Quail","Canyon Wren","Chipping Sparrow","Chukar","Cliff Swallow","Common Raven","European Starling","Ferruginous Hawk","Golden Eagle","Gray Flycatcher","Green-tailed Towhee","Lazuli Bunting","Loggerhead Shrike","Mountain Bluebird","Northern Flicker","Prairie Falcon","Rock Pigeon","Rock Wren","Sage Thrasher","Sagebrush Sparrow","Say's Phoebe","Swainson's Hawk","Townsend's Solitaire","Tree Swallow","Turkey Vulture","Vesper Sparrow","Violet-green Swallow","Western Meadowlark","White-crowned Sparrow","White-throated Swift"],
+  l18:["American Avocet","American Crow","American Kestrel","American Robin","American Wigeon","Bank Swallow","Barn Swallow","Blue-winged Teal","Brewer's Blackbird","Brown-headed Cowbird","Canada Goose","Common Raven","Dunlin","European Starling","Ferruginous Hawk","Green-winged Teal","Horned Lark","House Finch","House Sparrow","Killdeer","Loggerhead Shrike","Long-billed Curlew","Long-billed Dowitcher","Mallard","Marsh Wren","Northern Pintail","Northern Shoveler","Prairie Falcon","Red-necked Phalarope","Red-tailed Hawk","Red-winged Blackbird","Ring-billed Gull","Sage Thrasher","Sagebrush Sparrow","Sandhill Crane","Savannah Sparrow","Song Sparrow","Spotted Sandpiper","Swainson's Hawk","Tree Swallow","Turkey Vulture","Western Kingbird","Western Meadowlark","White-faced Ibis","Willet","Wilson's Phalarope","Yellow-rumped Warbler"],
+  l19:["American Robin","Canada Jay","Cassin's Finch","Cassin's Vireo","Chipping Sparrow","Clark's Nutcracker","Cooper's Hawk","Dark-eyed Junco","Dusky Flycatcher","Gray Flycatcher","Great Gray Owl","Hairy Woodpecker","Hermit Thrush","Mountain Bluebird","Mountain Chickadee","Mourning Dove","Northern House Wren","Olive-sided Flycatcher","Pine Siskin","Red Crossbill","Red-tailed Hawk","Rufous Hummingbird","Sharp-shinned Hawk","Steller's Jay","Townsend's Solitaire","Turkey Vulture","Vesper Sparrow","Western Wood-Pewee","Williamson's Sapsucker"],
+  l20:["American Bittern","American Coot","American Crow","American Kestrel","American Robin","American White Pelican","American Wigeon","Ash-throated Flycatcher","Bald Eagle","Barn Swallow","Black Tern","Black-billed Magpie","Black-necked Stilt","Blue-winged Teal","Brewer's Blackbird","Brown-headed Cowbird","Bufflehead","Bullock's Oriole","California Scrub-Jay","Canada Goose","Cinnamon Teal","Clark's Nutcracker","Cliff Swallow","Common Raven","Common Yellowthroat","Cooper's Hawk","Double-crested Cormorant","Eurasian Collared-Dove","European Starling","Franklin's Gull","Gadwall","Golden Eagle","Golden-crowned Sparrow","Great Horned Owl","Greater White-fronted Goose","Greater Yellowlegs","Green-winged Teal","Hooded Merganser","Horned Lark","House Finch","Killdeer","Lark Sparrow","Lesser Scaup","Lincoln's Sparrow","Loggerhead Shrike","Long-billed Curlew","Long-billed Dowitcher","Mallard","Marsh Wren","Mountain Bluebird","Mountain Chickadee","Mourning Dove","Northern Flicker","Northern Harrier","Northern House Wren","Northern Pintail","Northern Shoveler","Osprey","Pied-billed Grebe","Pine Siskin","Pygmy Nuthatch","Red Crossbill","Redhead","Red-tailed Hawk","Red-winged Blackbird","Ring-necked Duck","Ruby-crowned Kinglet","Ruddy Duck","Sandhill Crane","Savannah Sparrow","Short-eared Owl","Song Sparrow","Sora","Steller's Jay","Townsend's Solitaire","Tree Swallow","Tundra Swan","Turkey Vulture","Vesper Sparrow","Virginia Rail","Western Meadowlark","White-breasted Nuthatch","White-crowned Sparrow","White-faced Ibis","White-headed Woodpecker","Willet","Willow Flycatcher","Wilson's Phalarope","Wilson's Snipe","Wood Duck","Yellow Rail","Yellow-headed Blackbird","Yellow-rumped Warbler"],
+  l22:["American Bittern","American Coot","American Goldfinch","American Kestrel","American Robin","American White Pelican","American Wigeon","Bald Eagle","Bank Swallow","Barn Swallow","Belted Kingfisher","Black Tern","Black-billed Magpie","Black-capped Chickadee","Black-headed Grosbeak","Bonaparte's Gull","Brewer's Blackbird","Brown-headed Cowbird","Bufflehead","Bullock's Oriole","California Quail","California Scrub-Jay","Canada Goose","Canvasback","Caspian Tern","Cedar Waxwing","Chipping Sparrow","Cinnamon Teal","Clark's Grebe","Cliff Swallow","Common Loon","Common Merganser","Common Raven","Double-crested Cormorant","Downy Woodpecker","Eared Grebe","Eurasian Collared-Dove","European Starling","Evening Grosbeak","Forster's Tern","Franklin's Gull","Gadwall","Golden-crowned Sparrow","Gray Flycatcher","Great Blue Heron","Great Egret","Greater Scaup","Greater White-fronted Goose","Green-winged Teal","Hooded Merganser","Horned Grebe","Horned Lark","House Finch","Killdeer","Lesser Goldfinch","Lesser Scaup","Lincoln's Sparrow","MacGillivray's Warbler","Mallard","Marbled Godwit","Marsh Wren","Merlin","Mourning Dove","Northern Rough-winged Swallow","Nashville Warbler","Northern Flicker","Northern Harrier","Northern House Wren","Northern Pintail","Northern Shoveler","Orange-crowned Warbler","Osprey","Pied-billed Grebe","Redhead","Red-tailed Hawk","Red-winged Blackbird","Ring-billed Gull","Ring-necked Duck","Ruby-crowned Kinglet","Ruddy Duck","Rufous Hummingbird","Sandhill Crane","Savannah Sparrow","Song Sparrow","Sora","Spotted Towhee","Tree Swallow","Turkey Vulture","Violet-green Swallow","Virginia Rail","Western Warbling Vireo","Western Bluebird","Western Flycatcher","Western Grebe","Western Meadowlark","Western Tanager","White-breasted Nuthatch","White-crowned Sparrow","Wilson's Warbler","Wood Duck","Yellow-headed Blackbird","Yellow-rumped Warbler","Horned Grebe","Bushtit","Lewis's Woodpecker"],
+  l23:["American Robin","Bald Eagle","Bewick's Wren","Blue-gray Gnatcatcher","Bullock's Oriole","Bushtit","California Scrub-Jay","California Towhee","Calliope Hummingbird","Canyon Wren","Cassin's Finch","Chipping Sparrow","Common Raven","Dusky Flycatcher","Golden Eagle","Golden-crowned Sparrow","Greater Yellowlegs","Hairy Woodpecker","Hermit Thrush","House Finch","Lazuli Bunting","Lesser Goldfinch","Mallard","Mountain Chickadee","Mountain Quail","Nashville Warbler","Orange-crowned Warbler","Purple Finch","Red-tailed Hawk","Rock Wren","Ruby-crowned Kinglet","Spotted Towhee","Townsend's Solitaire","Turkey Vulture","Western Bluebird","Western Warbling Vireo","White-crowned Sparrow","Wilson's Warbler","Yellow-rumped Warbler"],
+  l24:["American Robin","Bewick's Wren","Blue-gray Gnatcatcher","Brewer's Blackbird","Bushtit","California Scrub-Jay","Calliope Hummingbird","Canyon Wren","Golden-crowned Sparrow","Hermit Thrush","Mountain Chickadee","Nashville Warbler","Northern Flicker","Northern Harrier","Northern House Wren","Orange-crowned Warbler","Purple Finch","Spotted Towhee","Townsend's Solitaire","Turkey Vulture","White-crowned Sparrow","Yellow-rumped Warbler"],
+  l24b:["American Robin","Brown-headed Cowbird","Dark-eyed Junco","Fox Sparrow","Hairy Woodpecker","Mountain Chickadee","Mountain Quail","Northern Flicker","Purple Finch","Red-breasted Nuthatch","Red-breasted Sapsucker","Sooty Grouse","Spotted Towhee","White-headed Woodpecker","Williamson's Sapsucker","Yellow-rumped Warbler"],
+  l25:["American Coot","American Goldfinch","American Robin","American White Pelican","Bald Eagle","Bank Swallow","Barn Swallow","Barrow's Goldeneye","Belted Kingfisher","Bewick's Wren","Black Tern","Black-capped Chickadee","Black-crowned Night Heron","Black-necked Stilt","Bonaparte's Gull","Brewer's Blackbird","Brown-headed Cowbird","Bufflehead","Bushtit","California Gull","California Quail","California Scrub-Jay","California Towhee","Canada Goose","Caspian Tern","Cedar Waxwing","Clark's Grebe","Cliff Swallow","Common Goldeneye","Common Merganser","Common Raven","Common Yellowthroat","Double-crested Cormorant","Downy Woodpecker","Eared Grebe","Eurasian Collared-Dove","European Starling","Forster's Tern","Franklin's Gull","Gadwall","Golden-crowned Sparrow","Great Blue Heron","Great Egret","Greater White-fronted Goose","Great-tailed Grackle","Green Heron","Green-winged Teal","Hooded Merganser","House Finch","House Sparrow","Killdeer","Lazuli Bunting","Lesser Goldfinch","Lesser Scaup","Lincoln's Sparrow","Long-billed Dowitcher","Mallard","Mountain Chickadee","Mourning Dove","Northern Flicker","Northern Rough-winged Swallow","Northern Shoveler","Orange-crowned Warbler","Osprey","Pied-billed Grebe","Prairie Falcon","Purple Finch","Red Crossbill","Red-breasted Merganser","Red-breasted Sapsucker","Red-tailed Hawk","Red-winged Blackbird","Ring-billed Gull","Rock Pigeon","Ruby-crowned Kinglet","Ruddy Duck","Rufous Hummingbird","Short-billed Gull","Song Sparrow","Spotted Sandpiper","Spotted Towhee","Steller's Jay","Townsend's Solitaire","Townsend's Warbler","Tree Swallow","Turkey Vulture","Vaux's Swift","Western Grebe","Western Kingbird","Western Meadowlark","Western Tanager","Western Warbling Vireo","White-crowned Sparrow","Wilson's Warbler","Yellow-rumped Warbler"],
+  l27:["American Avocet","American Barn Owl","American Bittern","American Coot","American Kestrel","American Robin","American White Pelican","American Wigeon","Bald Eagle","Bank Swallow","Barn Swallow","Bewick's Wren","Black Phoebe","Black-billed Magpie","Black-crowned Night Heron","Black-necked Stilt","Blue-winged Teal","Bonaparte's Gull","Brewer's Blackbird","Brown-headed Cowbird","Bufflehead","Bullock's Oriole","Cackling Goose","California Gull","California Quail","Canada Goose","Canvasback","Caspian Tern","Cedar Waxwing","Cinnamon Teal","Clark's Grebe","Cliff Swallow","Common Raven","Common Yellowthroat","Double-crested Cormorant","Dunlin","Eared Grebe","European Starling","Forster's Tern","Franklin's Gull","Gadwall","Golden Eagle","Golden-crowned Sparrow","Great Blue Heron","Great Egret","Great Horned Owl","Greater White-fronted Goose","Greater Yellowlegs","Great-tailed Grackle","Green-winged Teal","Hooded Merganser","House Finch","House Sparrow","Killdeer","Least Sandpiper","Lesser Scaup","Loggerhead Shrike","Long-billed Dowitcher","Mallard","Marsh Wren","Mourning Dove","Northern Harrier","Northern Pintail","Northern Rough-winged Swallow","Northern Shoveler","Osprey","Peregrine Falcon","Pied-billed Grebe","Redhead","Red-tailed Hawk","Red-winged Blackbird","Ring-billed Gull","Ring-necked Duck","Ring-necked Pheasant","Rock Pigeon","Ross's Goose","Ruddy Duck","Sandhill Crane","Savannah Sparrow","Say's Phoebe","Snow Goose","Song Sparrow","Sora","Spotted Sandpiper","Tree Swallow","Tricolored Blackbird","Tundra Swan","Turkey Vulture","Violet-green Swallow","Virginia Rail","Western Grebe","Western Kingbird","Western Meadowlark","Western Sandpiper","White-crowned Sparrow","White-faced Ibis","Wilson's Snipe","Yellow-headed Blackbird","Yellow-rumped Warbler"],
+  l29:["American Avocet","American Herring Gull","American Kestrel","American Pipit","American Robin","American White Pelican","American Wigeon","Bald Eagle","Barn Swallow","Black-bellied Plover","Black-crowned Night Heron","Black-necked Stilt","Blue-winged Teal","Bonaparte's Gull","Brewer's Blackbird","Brown-headed Cowbird","Bufflehead","Cackling Goose","California Gull","Canada Goose","Caspian Tern","Cinnamon Teal","Cliff Swallow","Common Goldeneye","Common Merganser","Common Raven","Double-crested Cormorant","Dunlin","Eurasian Collared-Dove","Eurasian Wigeon","European Starling","Forster's Tern","Franklin's Gull","Gadwall","Golden Eagle","Great Blue Heron","Great Egret","Greater Scaup","Greater White-fronted Goose","Greater Yellowlegs","Green-winged Teal","Horned Lark","House Finch","House Sparrow","Killdeer","Least Sandpiper","Lesser Scaup","Lesser Yellowlegs","Long-billed Curlew","Long-billed Dowitcher","Mallard","Marbled Godwit","Northern Harrier","Northern Pintail","Northern Shoveler","Peregrine Falcon","Prairie Falcon","Redhead","Red-tailed Hawk","Red-winged Blackbird","Ring-billed Gull","Ring-necked Pheasant","Rock Pigeon","Ross's Goose","Rough-legged Hawk","Sandhill Crane","Savannah Sparrow","Semipalmated Plover","Snow Goose","Snowy Egret","Song Sparrow","Swainson's Hawk","Tricolored Blackbird","Western Meadowlark","Western Sandpiper","White-crowned Sparrow","White-faced Ibis","Willet","Wilson's Phalarope"],
+  l30:["American Avocet","American Coot","American Kestrel","American Pipit","American White Pelican","American Wigeon","Bald Eagle","Barn Swallow","Black-bellied Plover","Black-billed Magpie","Black-crowned Night Heron","Black-necked Stilt","Blue-winged Teal","Brewer's Blackbird","Brown-headed Cowbird","Bufflehead","Cackling Goose","California Gull","Canada Goose","Canvasback","Caspian Tern","Cinnamon Teal","Cliff Swallow","Common Goldeneye","Common Merganser","Common Raven","Double-crested Cormorant","Dunlin","Eared Grebe","Eurasian Collared-Dove","Eurasian Wigeon","European Starling","Forster's Tern","Franklin's Gull","Gadwall","Golden Eagle","Great Blue Heron","Great Egret","Great Horned Owl","Greater Scaup","Greater White-fronted Goose","Greater Yellowlegs","Green-winged Teal","Hooded Merganser","Horned Lark","Killdeer","Least Sandpiper","Lesser Scaup","Lesser Yellowlegs","Long-billed Curlew","Long-billed Dowitcher","Mallard","Marbled Godwit","Mourning Dove","Northern Harrier","Northern Pintail","Northern Shoveler","Peregrine Falcon","Pied-billed Grebe","Prairie Falcon","Redhead","Red-necked Phalarope","Red-tailed Hawk","Red-winged Blackbird","Ring-billed Gull","Ring-necked Duck","Ring-necked Pheasant","Ross's Goose","Ruddy Duck","Sandhill Crane","Savannah Sparrow","Semipalmated Plover","Short-eared Owl","Snow Goose","Snowy Egret","Song Sparrow","Swainson's Hawk","Tree Swallow","Tricolored Blackbird","Turkey Vulture","Western Grebe","Western Meadowlark","Western Sandpiper","White-faced Ibis","Willet","Wilson's Phalarope","Wilson's Snipe","Yellow-headed Blackbird"],
+  l31:["American Avocet","American Coot","American Pipit","American Robin","American Wigeon","Bank Swallow","Barn Swallow","Black-bellied Plover","Black-necked Stilt","Brewer's Blackbird","Brown-headed Cowbird","California Gull","California Quail","Canada Goose","Cinnamon Teal","Common Raven","Dunlin","Franklin's Gull","Gadwall","Greater Yellowlegs","Green-winged Teal","Horned Lark","Hudsonian Whimbrel","Killdeer","Least Sandpiper","Loggerhead Shrike","Long-billed Curlew","Long-billed Dowitcher","Mallard","Marbled Godwit","Marsh Wren","Mourning Dove","Northern Harrier","Northern Pintail","Northern Shoveler","Red-tailed Hawk","Red-winged Blackbird","Ring-billed Gull","Ring-necked Pheasant","Rough-legged Hawk","Sage Thrasher","Sandhill Crane","Savannah Sparrow","Snow Goose","Song Sparrow","Spotted Towhee","Swainson's Hawk","Tricolored Blackbird","Tundra Swan","Turkey Vulture","Western Meadowlark","White-crowned Sparrow","White-faced Ibis","Willet","Wilson's Phalarope","Wilson's Snipe","Yellow-headed Blackbird"],
+  l33:["American Robin","Black-headed Grosbeak","Brown-headed Cowbird","Calliope Hummingbird","Cassin's Finch","Cassin's Vireo","Evening Grosbeak","Great Gray Owl","Mountain Chickadee","Mourning Dove","Nashville Warbler","Olive-sided Flycatcher","Pileated Woodpecker","Pygmy Nuthatch","Red-breasted Sapsucker","Red-winged Blackbird","Rufous Hummingbird","Spotted Towhee","Tree Swallow","Western Warbling Vireo","Western Wood-Pewee","White-headed Woodpecker","Yellow-headed Blackbird"],
+  l36b:["American Dipper","American Robin","Barn Swallow","Belted Kingfisher","Black-capped Chickadee","Brown Creeper","California Scrub-Jay","Canada Jay","Cassin's Finch","Cassin's Vireo","Cedar Waxwing","Chestnut-backed Chickadee","Cliff Swallow","Common Merganser","Common Raven","Dark-eyed Junco","Dusky Flycatcher","Golden-crowned Kinglet","Great Blue Heron","Hairy Woodpecker","Hammond's Flycatcher","Hermit Thrush","Hermit Warbler","MacGillivray's Warbler","Mountain Chickadee","Northern Flicker","Northern Pygmy-Owl","Northern Yellow Warbler","Orange-crowned Warbler","Osprey","Pacific Wren","Pileated Woodpecker","Pine Siskin","Purple Finch","Red-breasted Nuthatch","Red-breasted Sapsucker","Rufous Hummingbird","Song Sparrow","Spotted Sandpiper","Steller's Jay","Townsend's Solitaire","Townsend's Warbler","Tree Swallow","Turkey Vulture","Western Tanager","Western Warbling Vireo","Western Wood-Pewee","Wood Duck","Yellow-rumped Warbler"],
+  l37:["American Bittern","American Coot","American Pipit","American White Pelican","American Wigeon","Barn Swallow","Belted Kingfisher","Bewick's Wren","Black Phoebe","Black-crowned Night Heron","Brewer's Blackbird","Bufflehead","Cackling Goose","Canada Goose","Cinnamon Teal","Cliff Swallow","Common Yellowthroat","Double-crested Cormorant","Eurasian Collared-Dove","European Starling","Gadwall","Golden-crowned Sparrow","Great Blue Heron","Great Egret","Greater Scaup","Greater White-fronted Goose","Greater Yellowlegs","Great-tailed Grackle","Green Heron","Green-winged Teal","Hooded Merganser","House Sparrow","Killdeer","Least Sandpiper","Lesser Goldfinch","Lesser Scaup","Lincoln's Sparrow","Mallard","Marsh Wren","Mourning Dove","Northern Harrier","Northern Mockingbird","Northern Pintail","Northern Shoveler","Northern Yellow Warbler","Osprey","Peregrine Falcon","Pied-billed Grebe","Red-shouldered Hawk","Red-tailed Hawk","Red-winged Blackbird","Ring-necked Duck","Ring-necked Pheasant","Rock Pigeon","Ruddy Duck","Savannah Sparrow","Solitary Sandpiper","Song Sparrow","Sora","Spotted Sandpiper","Tree Swallow","Vaux's Swift","Violet-green Swallow","Virginia Rail","Western Grebe","Western Kingbird","Western Meadowlark","White-crowned Sparrow","Wilson's Snipe","Wood Duck","Yellow-breasted Chat","Yellow-headed Blackbird"],
+  l38:["Acorn Woodpecker","American Bittern","American Coot","American Crow","American Goldfinch","American Kestrel","American Pipit","American White Pelican","American Wigeon","Anna's Hummingbird","Ash-throated Flycatcher","Bald Eagle","Bank Swallow","Barn Swallow","Belted Kingfisher","Black Phoebe","Black-crowned Night Heron","Blue-winged Teal","Cackling Goose","California Towhee","Canada Goose","Cinnamon Teal","Cliff Swallow","Common Raven","Common Yellowthroat","Dunlin","European Starling","Gadwall","Golden Eagle","Golden-crowned Sparrow","Grasshopper Sparrow","Great Blue Heron","Great Egret","Greater White-fronted Goose","Greater Yellowlegs","Great-tailed Grackle","Green Heron","Green-winged Teal","Killdeer","Lark Sparrow","Lazuli Bunting","Least Sandpiper","Lesser Goldfinch","Lesser Yellowlegs","Lincoln's Sparrow","Long-billed Dowitcher","Mallard","Marsh Wren","Merlin","Mourning Dove","Northern Harrier","Northern Mockingbird","Northern Rough-winged Swallow","Northern Shoveler","Osprey","Pied-billed Grebe","Red-necked Phalarope","Red-shouldered Hawk","Red-tailed Hawk","Red-winged Blackbird","Ring-necked Duck","Ring-necked Pheasant","Rock Pigeon","Savannah Sparrow","Say's Phoebe","Short-eared Owl","Solitary Sandpiper","Song Sparrow","Sora","Spotted Sandpiper","Spotted Towhee","Tree Swallow","Tricolored Blackbird","Turkey Vulture","Violet-green Swallow","Virginia Rail","Western Kingbird","Western Meadowlark","Western Sandpiper","White-crowned Sparrow","White-faced Ibis","Wilson's Snipe","Wood Duck","Yellow-headed Blackbird"],
+  l39:["Acorn Woodpecker","American Avocet","American Coot","American Crow","American Goldfinch","American Herring Gull","American Kestrel","American Pipit","American Robin","American White Pelican","American Wigeon","Ash-throated Flycatcher","Baird's Sandpiper","Bald Eagle","Bank Swallow","Barn Swallow","Belted Kingfisher","Black Phoebe","Black-bellied Plover","Black-capped Chickadee","Black-necked Stilt","Blue-winged Teal","Bonaparte's Gull","Brewer's Blackbird","Bufflehead","Bullock's Oriole","Cackling Goose","California Gull","Canada Goose","Caspian Tern","Cinnamon Teal","Cliff Swallow","Common Raven","Common Yellowthroat","Cooper's Hawk","Double-crested Cormorant","Dunlin","Eared Grebe","Eurasian Collared-Dove","Eurasian Wigeon","European Starling","Gadwall","Golden-crowned Sparrow","Great Blue Heron","Great Egret","Greater Scaup","Greater White-fronted Goose","Greater Yellowlegs","Great-tailed Grackle","Green Heron","Green-winged Teal","Horned Grebe","House Finch","Hudsonian Whimbrel","Killdeer","Lark Sparrow","Least Sandpiper","Lesser Goldfinch","Lesser Scaup","Lesser Yellowlegs","Lincoln's Sparrow","Long-billed Dowitcher","Mallard","Marbled Godwit","Marsh Wren","Merlin","Mourning Dove","Northern Flicker","Northern Harrier","Northern Mockingbird","Northern Pintail","Northern Rough-winged Swallow","Northern Shoveler","Osprey","Pectoral Sandpiper","Peregrine Falcon","Purple Martin","Redhead","Red-necked Phalarope","Red-tailed Hawk","Red-winged Blackbird","Ring-billed Gull","Ring-necked Duck","Rock Pigeon","Ruddy Duck","Sanderling","Savannah Sparrow","Semipalmated Plover","Short-billed Dowitcher","Solitary Sandpiper","Song Sparrow","Sora","Spotted Sandpiper","Spotted Towhee","Tree Swallow","Tricolored Blackbird","Turkey Vulture","Vaux's Swift","Violet-green Swallow","Virginia Rail","Western Kingbird","Western Meadowlark","Western Sandpiper","White-crowned Sparrow","White-faced Ibis","Wild Turkey","Willet","Wilson's Phalarope","Wilson's Snipe","Wood Duck","Yellow-breasted Chat","Yellow-headed Blackbird","Yellow-rumped Warbler"],
+  l40:["Acorn Woodpecker","American Kestrel","Anna's Hummingbird","Ash-throated Flycatcher","Bewick's Wren","Black Phoebe","Blue-gray Gnatcatcher","Brewer's Blackbird","Bullock's Oriole","California Quail","California Scrub-Jay","California Towhee","Cliff Swallow","Common Raven","Eurasian Collared-Dove","European Starling","Golden Eagle","Golden-crowned Sparrow","Grasshopper Sparrow","Great Blue Heron","Great Horned Owl","House Finch","Lark Sparrow","Lazuli Bunting","Lesser Goldfinch","Lewis's Woodpecker","Lincoln's Sparrow","Mourning Dove","Northern Harrier","Northern Mockingbird","Oak Titmouse","Orange-crowned Warbler","Red-tailed Hawk","Ring-necked Pheasant","Rock Pigeon","Savannah Sparrow","Spotted Towhee","Tree Swallow","Turkey Vulture","Vaux's Swift","Violet-green Swallow","Western Bluebird","Western Kingbird","Western Meadowlark","Western Warbling Vireo","White-breasted Nuthatch","White-crowned Sparrow","Wild Turkey","Wilson's Warbler","Yellow-breasted Chat","Yellow-rumped Warbler"],
+  l41:["Acorn Woodpecker","American Crow","American Goldfinch","American Kestrel","American Pipit","American Robin","American White Pelican","Anna's Hummingbird","Ash-throated Flycatcher","Bald Eagle","Band-tailed Pigeon","Barn Swallow","Bewick's Wren","Black-capped Chickadee","Black-headed Grosbeak","Black-throated Gray Warbler","Blue-gray Gnatcatcher","Brewer's Blackbird","Brown-headed Cowbird","Bullock's Oriole","Bushtit","California Quail","California Scrub-Jay","California Towhee","Canada Goose","Canyon Wren","Cassin's Vireo","Chipping Sparrow","Common Raven","Common Yellowthroat","Cooper's Hawk","Dark-eyed Junco","Downy Woodpecker","Dusky Flycatcher","Eurasian Collared-Dove","European Starling","Evening Grosbeak","Golden Eagle","Golden-crowned Sparrow","Great Blue Heron","Great Horned Owl","Greater White-fronted Goose","Hairy Woodpecker","Hammond's Flycatcher","Hermit Thrush","House Finch","Hutton's Vireo","Lark Sparrow","Lazuli Bunting","Lesser Goldfinch","Lewis's Woodpecker","Lincoln's Sparrow","MacGillivray's Warbler","Mallard","Mountain Quail","Mourning Dove","Nashville Warbler","Northern Flicker","Northern House Wren","Northern Rough-winged Swallow","Northern Yellow Warbler","Oak Titmouse","Orange-crowned Warbler","Osprey","Peregrine Falcon","Pileated Woodpecker","Prairie Falcon","Purple Finch","Purple Martin","Red-shouldered Hawk","Red-tailed Hawk","Red-winged Blackbird","Rock Pigeon","Ruby-crowned Kinglet","Rufous Hummingbird","Savannah Sparrow","Sharp-shinned Hawk","Song Sparrow","Spotted Sandpiper","Spotted Towhee","Steller's Jay","Townsend's Warbler","Tree Swallow","Turkey Vulture","Vaux's Swift","Violet-green Swallow","Western Bluebird","Western Flycatcher","Western Kingbird","Western Meadowlark","Western Tanager","Western Warbling Vireo","White-breasted Nuthatch","White-crowned Sparrow","White-throated Swift","Wild Turkey","Wilson's Warbler","Yellow-rumped Warbler","Northern Harrier","Rock Wren","Western Wood-Pewee","Wrentit"],
+  l42:["Acorn Woodpecker","American Goldfinch","American Robin","Bewick's Wren","Black-capped Chickadee","Black-headed Grosbeak","Black-throated Gray Warbler","Brown-headed Cowbird","Bullock's Oriole","California Quail","California Scrub-Jay","Canada Goose","Cassin's Vireo","Chestnut-backed Chickadee","Chipping Sparrow","Cliff Swallow","Common Raven","Common Yellowthroat","Cooper's Hawk","Dark-eyed Junco","Downy Woodpecker","European Starling","Golden Eagle","Hermit Warbler","House Finch","Lazuli Bunting","Lesser Goldfinch","MacGillivray's Warbler","Mourning Dove","Nashville Warbler","Northern Flicker","Orange-crowned Warbler","Pine Siskin","Purple Finch","Red-breasted Nuthatch","Red-shouldered Hawk","Red-tailed Hawk","Red-winged Blackbird","Song Sparrow","Steller's Jay","Turkey Vulture","Vaux's Swift","Violet-green Swallow","Western Bluebird","Western Flycatcher","Western Kingbird","Western Tanager","Western Wood-Pewee","White-breasted Nuthatch","White-crowned Sparrow","Wild Turkey","Wood Duck","Wrentit","Yellow-breasted Chat"],
+  l43:["Black-headed Grosbeak","Bushtit","Canada Jay","Chipping Sparrow","Common Raven","Hammond's Flycatcher","Hermit Thrush","Hermit Warbler","Hutton's Vireo","MacGillivray's Warbler","Northern Flicker","Northern House Wren","Northern Pygmy-Owl","Pacific Wren","Pileated Woodpecker","Pine Siskin","Red-breasted Nuthatch","Red-breasted Sapsucker","Ruby-crowned Kinglet","Rufous Hummingbird","Sooty Grouse","Spotted Towhee","Steller's Jay","Varied Thrush","Western Bluebird","Western Tanager","White-crowned Sparrow","Wrentit"],
+  l45:["White-tailed Kite","Snow Goose","Wild Turkey","Red-shouldered Hawk","Great Egret","Northern Harrier"],
+  l46b:["American Crow","American Goldfinch","American Robin","Anna's Hummingbird","Barn Swallow","Bushtit","Cackling Goose","Canada Goose","Cliff Swallow","Common Yellowthroat","Cooper's Hawk","Downy Woodpecker","Eurasian Collared-Dove","Golden-crowned Sparrow","Great Blue Heron","Great Egret","House Finch","Hutton's Vireo","Killdeer","Mallard","Marsh Wren","Mourning Dove","Northern Flicker","Northern Harrier","Northern Rough-winged Swallow","Orange-crowned Warbler","Pacific Wren","Pileated Woodpecker","Purple Finch","Purple Martin","Red-shouldered Hawk","Red-tailed Hawk","Red-winged Blackbird","Savannah Sparrow","Sharp-shinned Hawk","Short-eared Owl","Song Sparrow","Spotted Towhee","Steller's Jay","Tree Swallow","Turkey Vulture","Violet-green Swallow","Virginia Rail","Western Flycatcher","White-crowned Sparrow","White-tailed Kite","Wilson's Warbler","Wrentit","Yellow-rumped Warbler"],
+  l46:["American Crow","American Herring Gull","American Pipit","American Robin","American Wigeon","Bald Eagle","Band-tailed Pigeon","Barn Swallow","Belted Kingfisher","Bewick's Wren","Black-bellied Plover","Black-capped Chickadee","Bonaparte's Gull","Bufflehead","Cackling Goose","California Gull","Canada Goose","Caspian Tern","Chestnut-backed Chickadee","Double-crested Cormorant","Downy Woodpecker","Dunlin","Eurasian Collared-Dove","European Starling","Gadwall","Glaucous-winged Gull","Golden-crowned Kinglet","Golden-crowned Sparrow","Great Blue Heron","Great Egret","Greater White-fronted Goose","Greater Yellowlegs","Green-winged Teal","Hairy Woodpecker","Hudsonian Whimbrel","Killdeer","Least Sandpiper","Lesser Yellowlegs","Long-billed Curlew","Long-billed Dowitcher","Mallard","Marbled Godwit","Mourning Dove","Northern Harrier","Northern Pintail","Northern Shoveler","Orange-crowned Warbler","Osprey","Peregrine Falcon","Purple Finch","Red Crossbill","Red Knot","Red-breasted Merganser","Red-necked Phalarope","Ring-billed Gull","Ruby-crowned Kinglet","Semipalmated Plover","Semipalmated Sandpiper","Short-billed Dowitcher","Short-billed Gull","Song Sparrow","Spotted Towhee","Steller's Jay","Turkey Vulture","Vaux's Swift","Western Gull","Western Sandpiper","Western Tanager","White-crowned Sparrow","White-tailed Kite","Wrentit"],
+  l51:["American Crow","American Herring Gull","Anna's Hummingbird","Bald Eagle","Black Oystercatcher","Black Scoter","Black Turnstone","Black-capped Chickadee","Bonaparte's Gull","Brandt's Cormorant","Brant","Brewer's Blackbird","Brown Pelican","Brown-headed Cowbird","Bufflehead","Bushtit","Cackling Goose","California Gull","Canada Goose","Caspian Tern","Cassin's Auklet","Cedar Waxwing","Chestnut-backed Chickadee","Cliff Swallow","Common Loon","Common Murre","Common Raven","Dark-eyed Junco","Double-crested Cormorant","Dunlin","European Starling","Glaucous-winged Gull","Golden-crowned Kinglet","Harlequin Duck","Heermann's Gull","House Finch","House Sparrow","Hudsonian Whimbrel","Killdeer","Least Sandpiper","Marbled Godwit","Marbled Murrelet","Orange-crowned Warbler","Pacific Loon","Pelagic Cormorant","Peregrine Falcon","Pigeon Guillemot","Purple Finch","Purple Martin","Red-breasted Merganser","Red-necked Grebe","Red-throated Loon","Rhinoceros Auklet","Ring-billed Gull","Rock Pigeon","Sanderling","Semipalmated Plover","Short-billed Dowitcher","Short-billed Gull","Song Sparrow","Sooty Shearwater","Surf Scoter","Surfbird","Swainson's Thrush","Tufted Puffin","Turkey Vulture","Violet-green Swallow","Wandering Tattler","Western Grebe","Western Gull","Western Sandpiper","White-crowned Sparrow","White-winged Scoter","Wild Turkey","Wrentit"],
+  l50:["American Crow","American Herring Gull","American Wigeon","Bald Eagle","Band-tailed Pigeon","Barn Swallow","Belted Kingfisher","Black Oystercatcher","Black Phoebe","Black Scoter","Black Turnstone","Black-capped Chickadee","Bonaparte's Gull","Brandt's Cormorant","Brant","Brewer's Blackbird","Brown Pelican","Brown-headed Cowbird","Bufflehead","Cackling Goose","California Gull","Canada Goose","Caspian Tern","Chestnut-backed Chickadee","Common Loon","Common Merganser","Common Murre","Common Raven","Common Tern","Double-crested Cormorant","Dunlin","European Starling","Gadwall","Glaucous-winged Gull","Great Blue Heron","Great Egret","Greater Yellowlegs","Harlequin Duck","Heermann's Gull","House Finch","House Sparrow","Hudsonian Whimbrel","Iceland Gull","Killdeer","Least Sandpiper","Long-billed Dowitcher","Long-tailed Duck","Marbled Godwit","Mourning Dove","Orange-crowned Warbler","Osprey","Pacific Loon","Pelagic Cormorant","Peregrine Falcon","Pied-billed Grebe","Pigeon Guillemot","Purple Finch","Red-breasted Merganser","Red-necked Grebe","Red-necked Phalarope","Red-throated Loon","Red-winged Blackbird","Rhinoceros Auklet","Ring-billed Gull","Rock Pigeon","Ruddy Turnstone","Sanderling","Semipalmated Plover","Short-billed Dowitcher","Short-billed Gull","Snow Goose","Song Sparrow","Spotted Towhee","Steller's Jay","Surf Scoter","Surfbird","Tree Swallow","Turkey Vulture","Violet-green Swallow","Wandering Tattler","Western Grebe","Western Gull","Western Sandpiper","White-crowned Sparrow","White-winged Scoter","Wilson's Warbler","Wrentit","Yellow-rumped Warbler"],
+  l49:["American Coot","American Wigeon","Baird's Sandpiper","Black Turnstone","Brant","Brewer's Blackbird","Bufflehead","Cinnamon Teal","Eurasian Wigeon","Gadwall","Great Blue Heron","Great Egret","Hooded Merganser","Killdeer","Lesser Scaup","Mallard","Marbled Godwit","Northern Pintail","Northern Shoveler","Pied-billed Grebe","Red-necked Phalarope","Ring-necked Duck","Short-billed Dowitcher","Snowy Egret","Wandering Tattler","Western Gull"],
+  l48:["American Crow","American Robin","American Wigeon","Anna's Hummingbird","Belted Kingfisher","Bewick's Wren","Black Oystercatcher","Black Turnstone","Black-capped Chickadee","Brandt's Cormorant","Brant","Bufflehead","Cackling Goose","Caspian Tern","Common Loon","Common Merganser","Double-crested Cormorant","Dunlin","Gadwall","Great Blue Heron","Great Egret","Hudsonian Whimbrel","Marbled Godwit","Orange-crowned Warbler","Red Knot","Red-breasted Merganser","Red-necked Grebe","Ruby-crowned Kinglet","Ruddy Turnstone","Rufous Hummingbird","Song Sparrow","Spotted Towhee","Surfbird","Wandering Tattler","Western Grebe","Western Gull","White-crowned Sparrow","White-winged Scoter","Wrentit","Yellow-rumped Warbler"],
+  l47:["American Crow","Bald Eagle","Barn Swallow","Belted Kingfisher","Black Turnstone","Brant","Bufflehead","Canada Goose","Caspian Tern","Common Loon","Double-crested Cormorant","Eurasian Collared-Dove","European Starling","Gadwall","Glaucous-winged Gull","Great Blue Heron","Great Egret","House Finch","House Sparrow","Long-billed Curlew","Mallard","Orange-crowned Warbler","Osprey","Pelagic Cormorant","Purple Martin","Red-breasted Merganser","Red-necked Grebe","Rock Pigeon","Ruddy Turnstone","Song Sparrow","Surf Scoter","Turkey Vulture","Violet-green Swallow","Western Grebe","Western Gull","White-crowned Sparrow"],
+  l54:["American Crow","American Robin","American Wigeon","Bald Eagle","Band-tailed Pigeon","Belted Kingfisher","Black Phoebe","Brown-headed Cowbird","Bushtit","California Quail","Canada Goose","Cedar Waxwing","Chestnut-backed Chickadee","Common Merganser","Common Yellowthroat","Downy Woodpecker","Eurasian Collared-Dove","Gadwall","Golden-crowned Kinglet","Great Blue Heron","Hairy Woodpecker","Hooded Merganser","Hutton's Vireo","Mallard","Marsh Wren","Northern Flicker","Northern Harrier","Olive-sided Flycatcher","Orange-crowned Warbler","Pacific Wren","Pied-billed Grebe","Pileated Woodpecker","Purple Finch","Red Crossbill","Red-breasted Nuthatch","Red-winged Blackbird","Ring-necked Duck","Ruby-crowned Kinglet","Song Sparrow","Spotted Towhee","Swainson's Thrush","Tree Swallow","Turkey Vulture","Western Flycatcher","Western Tanager","White-crowned Sparrow","Wood Duck","Wrentit","Yellow-rumped Warbler"],
+  l52:["Black-bellied Plover","Brown Pelican","Bushtit","Cackling Goose","California Gull","California Quail","Caspian Tern","Common Murre","Dunlin","Heermann's Gull","Hudsonian Whimbrel","Least Sandpiper","Marbled Godwit","Marbled Murrelet","Osprey","Pacific Loon","Peregrine Falcon","Red Knot","Red-necked Phalarope","Rhinoceros Auklet","Sanderling","Semipalmated Plover","Snowy Plover","Turkey Vulture","Western Gull","Western Sandpiper","White-winged Scoter"],
+  l55:["Western Screech-Owl","Barred Owl"],
+  l_inc:[],
+  l_4mile_screech:["Western Screech-Owl","Barred Owl","Ruffed Grouse"],
+  l_4mile_upper:["American Crow","American Goldfinch","American Kestrel","American Robin","Anna's Hummingbird","Bald Eagle","Band-tailed Pigeon","Barn Swallow","Bewick's Wren","Black Phoebe","Black-headed Grosbeak","Black-throated Gray Warbler","Brown-headed Cowbird","California Quail","Cassin's Vireo","Chestnut-backed Chickadee","Cliff Swallow","Common Raven","Common Yellowthroat","Downy Woodpecker","European Starling","Hairy Woodpecker","House Finch","Hutton's Vireo","Lazuli Bunting","Northern Flicker","Olive-sided Flycatcher","Orange-crowned Warbler","Purple Finch","Red-breasted Nuthatch","Red-breasted Sapsucker","Ruffed Grouse","Rufous Hummingbird","Song Sparrow","Steller's Jay","Swainson's Thrush","Tree Swallow","Turkey Vulture","Violet-green Swallow","Western Flycatcher","Western Tanager","Western Warbling Vireo","White-crowned Sparrow","Wild Turkey","Wilson's Warbler","Wrentit","Yellow-breasted Chat"],
+  l_grass:["Acorn Woodpecker","American Kestrel","Ash-throated Flycatcher","Bewick's Wren","California Towhee","Common Raven","European Starling","Golden Eagle","Grasshopper Sparrow","Lazuli Bunting","Lewis's Woodpecker","Mourning Dove","Red-tailed Hawk","Savannah Sparrow","Turkey Vulture","Western Bluebird","Western Kingbird","Western Meadowlark","Wild Turkey"],
+  l_cablkrd:["Black-backed Woodpecker","American Three-toed Woodpecker","Williamson's Sapsucker","Mountain Chickadee","Red Crossbill","Pine Siskin","Clark's Nutcracker","Cassin's Finch","Pygmy Nuthatch","White-headed Woodpecker","Hairy Woodpecker","Northern Flicker","Common Raven","Steller's Jay","Dark-eyed Junco"],
+};
+
+const BASE_SPECIES=["Snow Goose","Ross's Goose","Greater White-fronted Goose","Brant","Cackling Goose","Canada Goose","Trumpeter Swan","Tundra Swan","Wood Duck","Blue-winged Teal","Cinnamon Teal","Northern Shoveler","Gadwall","Eurasian Wigeon","American Wigeon","Mallard","Northern Pintail","Green-winged Teal","Canvasback","Redhead","Ring-necked Duck","Tufted Duck","Greater Scaup","Lesser Scaup","Harlequin Duck","Surf Scoter","White-winged Scoter","Black Scoter","Long-tailed Duck","Bufflehead","Common Goldeneye","Barrow's Goldeneye","Hooded Merganser","Common Merganser","Red-breasted Merganser","Ruddy Duck","Mountain Quail","California Quail","Wild Turkey","Ruffed Grouse","Greater Sage-Grouse","Sooty Grouse","Ring-necked Pheasant","Chukar","Pied-billed Grebe","Horned Grebe","Red-necked Grebe","Eared Grebe","Western Grebe","Clark's Grebe","Rock Pigeon","Band-tailed Pigeon","Eurasian Collared-Dove","Mourning Dove","Common Nighthawk","Common Poorwill","Black Swift","Vaux's Swift","White-throated Swift","Black-chinned Hummingbird","Anna's Hummingbird","Costa's Hummingbird","Calliope Hummingbird","Rufous Hummingbird","Allen's Hummingbird","Virginia Rail","Sora","American Coot","Yellow Rail","Sandhill Crane","Black-necked Stilt","American Avocet","Black Oystercatcher","Black-bellied Plover","American Golden-Plover","Pacific Golden-Plover","Killdeer","Semipalmated Plover","Snowy Plover","Hudsonian Whimbrel","Long-billed Curlew","Marbled Godwit","Ruddy Turnstone","Black Turnstone","Red Knot","Surfbird","Sanderling","Dunlin","Baird's Sandpiper","Least Sandpiper","Western Sandpiper","Pectoral Sandpiper","Semipalmated Sandpiper","Short-billed Dowitcher","Long-billed Dowitcher","Wilson's Snipe","Spotted Sandpiper","Solitary Sandpiper","Wandering Tattler","Lesser Yellowlegs","Willet","Greater Yellowlegs","Wilson's Phalarope","Red-necked Phalarope","Common Murre","Pigeon Guillemot","Marbled Murrelet","Cassin's Auklet","Rhinoceros Auklet","Tufted Puffin","Black-legged Kittiwake","Bonaparte's Gull","Franklin's Gull","Heermann's Gull","Short-billed Gull","Ring-billed Gull","Western Gull","California Gull","American Herring Gull","Iceland Gull","Glaucous-winged Gull","Glaucous Gull","Elegant Tern","Caspian Tern","Black Tern","Common Tern","Forster's Tern","Red-throated Loon","Pacific Loon","Common Loon","Fork-tailed Storm-Petrel","Sooty Shearwater","Brandt's Cormorant","Pelagic Cormorant","Double-crested Cormorant","American White Pelican","Brown Pelican","American Bittern","Snowy Egret","Black-crowned Night Heron","Green Heron","Great Egret","Great Blue Heron","White-faced Ibis","Turkey Vulture","Osprey","White-tailed Kite","Golden Eagle","Northern Harrier","Sharp-shinned Hawk","Cooper's Hawk","American Goshawk","Bald Eagle","Red-shouldered Hawk","Swainson's Hawk","Red-tailed Hawk","Rough-legged Hawk","Ferruginous Hawk","American Barn Owl","Flammulated Owl","Western Screech-Owl","Great Horned Owl","Northern Pygmy-Owl","Burrowing Owl","Spotted Owl","Barred Owl","Great Gray Owl","Long-eared Owl","Short-eared Owl","Northern Saw-whet Owl","Belted Kingfisher","Lewis's Woodpecker","Acorn Woodpecker","Williamson's Sapsucker","Red-naped Sapsucker","Red-breasted Sapsucker","American Three-toed Woodpecker","Black-backed Woodpecker","Downy Woodpecker","Hairy Woodpecker","White-headed Woodpecker","Northern Flicker","Pileated Woodpecker","American Kestrel","Merlin","Peregrine Falcon","Prairie Falcon","Ash-throated Flycatcher","Western Kingbird","Eastern Kingbird","Olive-sided Flycatcher","Western Wood-Pewee","Willow Flycatcher","Least Flycatcher","Hammond's Flycatcher","Gray Flycatcher","Dusky Flycatcher","Western Flycatcher","Black Phoebe","Say's Phoebe","Hutton's Vireo","Cassin's Vireo","Western Warbling Vireo","Red-eyed Vireo","Loggerhead Shrike","Northern Shrike","Canada Jay","Pinyon Jay","Steller's Jay","California Scrub-Jay","Clark's Nutcracker","Black-billed Magpie","American Crow","Common Raven","Black-capped Chickadee","Mountain Chickadee","Chestnut-backed Chickadee","Oak Titmouse","Horned Lark","Bank Swallow","Tree Swallow","Violet-green Swallow","Northern Rough-winged Swallow","Purple Martin","Barn Swallow","Cliff Swallow","Bushtit","Wrentit","Golden-crowned Kinglet","Ruby-crowned Kinglet","Cedar Waxwing","Red-breasted Nuthatch","White-breasted Nuthatch","Pygmy Nuthatch","Brown Creeper","Blue-gray Gnatcatcher","Rock Wren","Canyon Wren","Bewick's Wren","Northern House Wren","Pacific Wren","Marsh Wren","Gray Catbird","Sage Thrasher","Northern Mockingbird","European Starling","American Dipper","Western Bluebird","Mountain Bluebird","Townsend's Solitaire","Swainson's Thrush","Hermit Thrush","American Robin","Varied Thrush","House Sparrow","American Pipit","Evening Grosbeak","Gray-crowned Rosy-Finch","House Finch","Purple Finch","Cassin's Finch","Red Crossbill","Pine Siskin","Lesser Goldfinch","American Goldfinch","Grasshopper Sparrow","Black-throated Sparrow","Lark Sparrow","Chipping Sparrow","Brewer's Sparrow","Fox Sparrow","Dark-eyed Junco","White-crowned Sparrow","Golden-crowned Sparrow","White-throated Sparrow","Sagebrush Sparrow","Vesper Sparrow","Savannah Sparrow","Song Sparrow","Lincoln's Sparrow","California Towhee","Green-tailed Towhee","Spotted Towhee","Yellow-breasted Chat","Yellow-headed Blackbird","Western Meadowlark","Bullock's Oriole","Red-winged Blackbird","Tricolored Blackbird","Brown-headed Cowbird","Brewer's Blackbird","Great-tailed Grackle","Northern Waterthrush","Orange-crowned Warbler","Nashville Warbler","MacGillivray's Warbler","Common Yellowthroat","Northern Yellow Warbler","Yellow-rumped Warbler","Black-throated Gray Warbler","Townsend's Warbler","Hermit Warbler","Wilson's Warbler","Western Tanager","Black-headed Grosbeak","Lazuli Bunting"];
+
+// ==================== STATE ====================
+function defaultState(){
+  const locSpecies={},times={};
+  INITIAL_LOCATIONS.forEach(l=>{
+    locSpecies[l.id]=[...(INITIAL_LOC_SPECIES[l.id]||[])];
+    times[l.id]={arrive:null,depart:null,lat:null,lng:null,accuracy:null,estArrive:l.ea||null,estDepart:l.ed||null};
+  });
+  return{startTime:Date.now(),view:'locations',locations:INITIAL_LOCATIONS.map(l=>({...l})),locSpecies,times,seenAt:{},alsoAt:{},notes:{},masterList:[...BASE_SPECIES],customSpecies:[],masterFilter:'all',masterSearch:'',masterOrder:'alpha',spFilter:'all',spOrder:'alpha',skipped:{},activeLoc:INITIAL_LOCATIONS[0].id};
+}
+
+let S;
+try{const raw=localStorage.getItem(STORAGE_KEY);S=raw?JSON.parse(raw):defaultState();}catch(e){S=defaultState();}
+if(!S.alsoAt)S.alsoAt={};if(!S.times)S.times={};if(!S.customSpecies)S.customSpecies=[];if(!S.notes)S.notes={};if(!S.skipped)S.skipped={};if(!S.masterList)S.masterList=[...BASE_SPECIES];if(!S.spOrder)S.spOrder='alpha';if(!S.masterOrder)S.masterOrder='alpha';if(!S.masterFilter)S.masterFilter='all';if(!S.spFilter)S.spFilter='all';if(!S.customSpecies)S.customSpecies=[];
+S.locations.forEach(l=>{if(!S.times[l.id])S.times[l.id]={arrive:null,depart:null,lat:null,lng:null,accuracy:null,estArrive:l.ea||null,estDepart:l.ed||null};['lat','lng','accuracy'].forEach(k=>{if(S.times[l.id][k]===undefined)S.times[l.id][k]=null;});if(!S.times[l.id].estArrive&&l.ea)S.times[l.id].estArrive=l.ea;if(!S.times[l.id].estDepart&&l.ed)S.times[l.id].estDepart=l.ed;if(l.planned===undefined)l.planned=true;});
+if(!S.activeLoc)S.activeLoc=S.locations[0]?.id;
+
+// Migration: add any new locations from INITIAL_LOCATIONS not yet in saved state
+INITIAL_LOCATIONS.forEach(l=>{
+  if(!S.locations.find(x=>x.id===l.id)){
+    S.locations.push({...l});
+    S.locSpecies[l.id]=[...(INITIAL_LOC_SPECIES[l.id]||[])];
+    S.times[l.id]={arrive:null,depart:null,lat:null,lng:null,accuracy:null,estArrive:l.ea||null,estDepart:l.ed||null};
+  }
+});
+
+// Save locally only - no Firebase push
+function saveLocal(){
+  try{localStorage.setItem(STORAGE_KEY,JSON.stringify(S));}catch(e){console.warn('Save failed',e);}
+}
+
+// Save locally AND push to Firebase - only call when sighting data changes
+function save(){
+  saveLocal();
+  if(_syncEnabled){pushSync();}
+}
+
+// ==================== HELPERS ====================
+function isSeen(n){return S.seenAt[n]!==undefined;}
+function getStateForLoc(name,lid){if(!isSeen(name))return'none';if(S.seenAt[name]===lid||(S.alsoAt[name]&&S.alsoAt[name].includes(lid)))return'here';return'elsewhere';}
+function allSpecies(){return[...new Set([...S.masterList,...S.customSpecies])].sort((a,b)=>a.localeCompare(b));}
+function isCustom(n){return S.customSpecies.includes(n);}
+function calcDur(a,d){if(!a||!d)return null;const[ah,am]=a.split(':').map(Number),[dh,dm]=d.split(':').map(Number);let m=(dh*60+dm)-(ah*60+am);if(m<0)m+=1440;if(m<=0)return null;const h=Math.floor(m/60),mn=m%60;return h>0?`${h}h ${mn}m`:`${mn}m`;}
+function nowStr(){const d=new Date();return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');}
+function noteKey(lid,n){return lid+'::'+n;}
+function getNote(lid,n){return S.notes[noteKey(lid,n)]||'';}
+function setNote(lid,n,v){const k=noteKey(lid,n);if(v.trim())S.notes[k]=v.trim();else delete S.notes[k];save();}
+
+function lastChanceStatus(name,lid){
+  if(isSeen(name))return null;
+  const idx=S.locations.findIndex(l=>l.id===lid);if(idx<0)return null;
+  // Exclude Incidental stop from last-chance calculations
+  const rem=S.locations.slice(idx).filter(l=>l.id!=='l_inc'&&!S.skipped[l.id]&&(S.locSpecies[l.id]||[]).includes(name));
+  if(rem.length===1)return'last';if(rem.length===2)return'second';return null;
+}
+function locLCSummary(lid){
+  const sps=S.locSpecies[lid]||[];let hl=false,hs=false;
+  for(const n of sps){const s=lastChanceStatus(n,lid);if(s==='last')hl=true;else if(s==='second')hs=true;}
+  return hl?'last':hs?'second':null;
+}
+function spSortRank(name,lid){const st=getStateForLoc(name,lid);if(st==='none'){const lc=lastChanceStatus(name,lid);if(lc==='last')return 0;if(lc==='second')return 1;return 2;}if(st==='elsewhere')return 3;return 4;}
+function seenHereCount(lid){const sps=S.locSpecies[lid]||[];return{here:sps.filter(n=>getStateForLoc(n,lid)==='here').length,elsewhere:sps.filter(n=>getStateForLoc(n,lid)==='elsewhere').length,total:sps.length};}
+function totalStats(){const all=new Set();S.locations.forEach(l=>(S.locSpecies[l.id]||[]).forEach(n=>all.add(n)));return{seenAny:Object.keys(S.seenAt).length,totalListed:all.size};}
+
+// ==================== REMOVE SPECIES FROM LOCATION ====================
+function removeSpeciesFromLoc(lid,name){
+  if(!confirm(`Remove "${name}" from this stop's list?\n\nThis only removes it from this stop — it stays on the master list and at other stops.`))return;
+  S.locSpecies[lid]=(S.locSpecies[lid]||[]).filter(s=>s!==name);
+  // If seen here, reassign sighting
+  if(S.seenAt[name]===lid){
+    const also=(S.alsoAt[name]||[]).filter(id=>id!==lid);
+    if(also.length){S.seenAt[name]=also[0];S.alsoAt[name]=also.slice(1);}
+    else{delete S.seenAt[name];}
+  }
+  if(S.alsoAt[name])S.alsoAt[name]=(S.alsoAt[name]||[]).filter(id=>id!==lid);
+  delete S.notes[noteKey(lid,name)];
+  save();renderSPCardHeader();renderSPList();renderHeader();
+}
+
+// ==================== MAIN RENDER ====================
+function renderAll(){renderHeader();renderView();}
+
+function renderHeader(){
+  const{seenAny,totalListed}=totalStats();
+  const done=S.locations.filter(l=>{const{here,total}=seenHereCount(l.id);return total>0&&here===total;}).length;
+  const skC=Object.keys(S.skipped).length;
+  document.getElementById('dateline').textContent=new Date(S.startTime).toLocaleDateString([],{month:'short',day:'numeric',year:'numeric'});
+  const codeEl=document.getElementById('session-code-display');
+  if(codeEl)codeEl.textContent=sessionCode?`Code: ${sessionCode}`:'';
+  document.getElementById('stats-bar').innerHTML=
+    `<div class="stat-chip"><div class="stat-val">${seenAny}</div><div class="stat-lbl">seen</div></div>`+
+    `<div class="stat-chip"><div class="stat-val">${totalListed}</div><div class="stat-lbl">listed</div></div>`+
+    `<div class="stat-chip"><div class="stat-val">${S.masterList.length}</div><div class="stat-lbl">master</div></div>`+
+    `<div class="stat-chip"><div class="stat-val">${done}/${S.locations.length}</div><div class="stat-lbl">stops done</div></div>`+
+    (skC?`<div class="stat-chip"><div class="stat-val" style="color:var(--text2)">${skC}</div><div class="stat-lbl">skipped</div></div>`:'');
+  document.querySelectorAll('.nav-tab').forEach((t,i)=>{
+    const views=['locations','master','manage','export'];
+    t.classList.toggle('active',views[i]===S.view||('locations'===S.view&&i===0));
+  });
+  // Update session panel in export view
+  const sp=document.getElementById('session-info-panel');
+  if(sp){
+    if(sessionCode&&_syncEnabled)sp.innerHTML=`<span style="color:var(--green)">● Live sync active</span> · Session code: <strong>${sessionCode}</strong>`;
+    else if(sessionCode)sp.innerHTML=`Session code: <strong>${sessionCode}</strong> (offline)`;
+    else sp.innerHTML='No active session.';
+  }
+}
+
+function setView(v){
+  S.view=v;saveLocal();
+  ['view-locations','view-master','view-manage','view-export'].forEach(id=>{document.getElementById(id).style.display='none';});
+  const spCard=document.getElementById('sp-card');spCard.classList.remove('visible');
+  if(v==='locations'){document.getElementById('view-locations').style.display='';renderLocList();}
+  else if(v==='master'){document.getElementById('view-master').style.display='';renderMaster();}
+  else if(v==='manage'){document.getElementById('view-manage').style.display='';renderManage();}
+  else if(v==='export'){document.getElementById('view-export').style.display='';}
+  renderHeader();
+}
+
+function renderView(){setView(S.view);}
+
+// ==================== LOCATION LIST ====================
+function renderLocList(){
+  const q=(document.getElementById('loc-search')?.value||'').toLowerCase();
+  const fl=S.locations.filter(l=>!q||l.name.toLowerCase().includes(q));
+  document.getElementById('loc-list').innerHTML=fl.map((loc,_)=>{
+    const gi=S.locations.indexOf(loc);
+    const{here,total}=seenHereCount(loc.id);const done=total>0&&here===total;
+    const sk=!!S.skipped[loc.id];const t=S.times[loc.id]||{};
+    const timeStr=t.arrive&&t.depart?`${t.arrive}–${t.depart}`:t.arrive?`${t.arrive}–`:t.estArrive?`~${t.estArrive}–${t.estDepart||'?'}`:'';
+    const lcSum=locLCSummary(loc.id);
+    const dot=lcSum==='last'?'<span class="lc-dot-last"></span>':lcSum==='second'?'<span class="lc-dot-second"></span>':'';
+    let badge='';
+    if(sk)badge=`<span class="loc-badge badge-skip">skipped</span>`;
+    else if(done)badge=`<span class="loc-badge badge-done">✓</span>`;
+    else if(timeStr)badge=`<span class="loc-badge badge-count">${timeStr}</span>`;
+    else badge=`<span class="loc-badge badge-count">${here}/${total}</span>`;
+    return`<div class="loc-item ${S.activeLoc===loc.id?'active-loc':''} ${sk?'skipped':''} ${loc.id==='l_inc'?'incidental-stop':''}" data-locid="${loc.id}">
+      <span class="loc-num">${loc.id==='l_inc'?'':gi+1}</span>${dot}
+      <span class="loc-icon">${loc.icon}</span>
+      <div class="loc-info"><div class="loc-name">${loc.name}</div>${timeStr?`<div class="loc-meta">${timeStr}</div>`:''}</div>
+      ${badge}</div>`;
+  }).join('');
+}
+
+// ==================== SPECIES CARD ====================
+let currentLoc=null;
+
+function openSPCard(lid){
+  currentLoc=lid;S.activeLoc=lid;
+  S.spFilter='all';S.spSearch=''; // always reset filter when opening a stop
+  saveLocal();
+  const loc=S.locations.find(l=>l.id===lid);if(!loc)return;
+  document.getElementById('view-locations').style.display='none';
+  const card=document.getElementById('sp-card');card.classList.add('visible');
+  renderSPCardHeader();renderSPList();
+}
+
+function closeSPCard(){
+  document.getElementById('sp-card').classList.remove('visible');
+  document.getElementById('view-locations').style.display='';
+  renderLocList();
+  currentLoc=null;
+}
+
+function renderSPCardHeader(){
+  const lid=currentLoc;const loc=S.locations.find(l=>l.id===lid);if(!loc)return;
+  const{here,elsewhere,total}=seenHereCount(lid);const t=S.times[lid]||{};
+  const pct=total?Math.round(here/total*100):0;
+  const sk=!!S.skipped[lid];
+  const gi=S.locations.indexOf(loc);
+  document.getElementById('sp-card-title').textContent=`${loc.icon} ${loc.name}`;
+  const incNote=lid==='l_inc'?`<div style="font-size:11px;color:var(--text2);font-style:italic;margin-bottom:6px">Species seen between stops. Each sighting is auto-stamped with time &amp; GPS coordinates in the note.</div>`:'';
+  document.getElementById('sp-card-meta').innerHTML=`${incNote}Stop ${gi+1} of ${S.locations.length} · ${here} here · ${elsewhere} elsewhere · ${total} total${sk?' · ⊘ Skipped':''}`;
+  document.getElementById('sp-prog').style.width=pct+'%';
+  // Est times
+  document.getElementById('est-times').innerHTML=
+    `<div class="est-block"><label>Est. Arrive</label><input type="time" value="${t.estArrive||''}" onchange="S.times['${lid}'].estArrive=this.value||null;save();renderSPCardHeader()"></div>`+
+    `<div class="est-block"><label>Est. Depart</label><input type="time" value="${t.estDepart||''}" onchange="S.times['${lid}'].estDepart=this.value||null;save();renderSPCardHeader()"></div>`+
+    (t.estArrive&&t.estDepart?`<span class="dur-chip">${calcDur(t.estArrive,t.estDepart)||''}</span>`:'');
+  // Nav link
+  const url=navURL(lid);
+  const c=LOC_COORDS[lid];
+  document.getElementById('nav-link-area').innerHTML=url
+    ?`<div class="nav-link-row"><a class="btn-nav" href="${url}" target="_blank">🗺 Navigate to stop</a>${c?`<span class="dur-chip" style="margin-left:6px">${c[0].toFixed(4)}, ${c[1].toFixed(4)}</span>`:''}</div>`:'';
+  // Actual times
+  document.getElementById('time-row').innerHTML=
+    `<div class="time-block"><label>Arrive</label>${t.arrive
+      ?`<input type="time" value="${t.arrive}" onchange="S.times['${lid}'].arrive=this.value;save()"><button class="btn-clear" onclick="clearArrive('${lid}')">✕</button>`
+      :`<button class="btn-stamp" onclick="stampArrive('${lid}')">⏱ Stamp+GPS</button>`
+    }</div>`+
+    `<div class="time-block"><label>Depart</label>${t.depart
+      ?`<input type="time" value="${t.depart}" onchange="S.times['${lid}'].depart=this.value;save()"><button class="btn-clear" onclick="clearDepart('${lid}')">✕</button>`
+      :`<button class="btn-stamp" onclick="stampDepart('${lid}')">⏱ Stamp</button>`
+    }</div>`+
+    (calcDur(t.arrive,t.depart)?`<span class="dur-chip">⏳ ${calcDur(t.arrive,t.depart)}</span>`:'');
+  // GPS
+  let gpsHTML='';
+  if(t.arrive){
+    if(t.lat&&t.lng){
+      const gurl=`https://www.google.com/maps?q=${t.lat},${t.lng}`;
+      gpsHTML=`<div class="gps-row"><div class="gps-coords">📍 ${t.lat}, ${t.lng}${t.accuracy?`<span class="gps-acc"> ±${t.accuracy}m</span>`:''}</div><a href="${gurl}" target="_blank" class="btn-nav" style="font-size:11px;padding:4px 8px">View</a><button class="btn-clear" onclick="clearGPS('${lid}')">✕</button></div>`;
+    }else{
+      gpsHTML=`<div class="gps-row"><span style="font-size:12px;color:var(--text2);font-style:italic">Acquiring GPS…</span></div>`;
+    }
+  }
+  document.getElementById('gps-area').innerHTML=gpsHTML;
+  // Filter bar
+  const sps=S.locSpecies[lid]||[];
+  const{here:h,elsewhere:el}=seenHereCount(lid);
+  const lcCount=sps.filter(n=>!isSeen(n)&&lastChanceStatus(n,lid)!==null).length;
+  const sf=S.spFilter;
+  document.getElementById('sp-filter-bar').innerHTML=
+    `<button class="f-btn ${sf==='all'?'on':''}" onclick="S.spFilter='all';saveLocal();renderSPList()">All (${total})</button>`+
+    `<button class="f-btn ${sf==='unseen'?'on':''}" onclick="S.spFilter='unseen';saveLocal();renderSPList()">Unseen</button>`+
+    `<button class="f-btn ${sf==='elsewhere'?'on':''}" onclick="S.spFilter='elsewhere';saveLocal();renderSPList()">Elsewhere (${el})</button>`+
+    `<button class="f-btn ${sf==='here'?'on':''}" onclick="S.spFilter='here';saveLocal();renderSPList()">Here (${h})</button>`+
+    (lcCount?`<button class="f-btn ${sf==='lc'?'lc-on':''}" onclick="S.spFilter='lc';saveLocal();renderSPList()">⚠ Last (${lcCount})</button>`:'')+
+    `<div class="order-toggle"><button class="o-btn ${S.spOrder==='alpha'?'on':''}" onclick="S.spOrder='alpha';saveLocal();renderSPList()">A–Z</button><button class="o-btn ${S.spOrder==='phylo'?'on':''}" onclick="S.spOrder='phylo';saveLocal();renderSPList()">Phylo</button></div>`;
+  // Footer — add species, skip, remove stop
+  document.getElementById('sp-footer').innerHTML=_viewOnly
+    ? `<div style="font-size:13px;color:var(--text2);padding:4px 0;text-align:center;width:100%">👁 View only mode — no edits allowed</div>`
+    : `<button class="btn-green" onclick="openAddModal('${lid}')">+ Add species</button>`+
+      `<button class="btn-gray ${sk?'btn-skip-active':''}" onclick="toggleSkip('${lid}')">${sk?'⊘ Undo skip':'⊘ Skip stop'}</button>`+
+      `<button class="btn-gray" style="color:var(--red);border-color:var(--red)" onclick="removeStop('${lid}')">✕ Remove stop</button>`;
+}
+
+function renderSPList(){
+  if(!currentLoc)return;
+  const lid=currentLoc;const sps=S.locSpecies[lid]||[];
+  const q=(document.getElementById('sp-search')?.value||'').toLowerCase();
+  const sf=S.spFilter;const so=S.spOrder;
+  let disp=sps.filter(name=>{
+    if(q&&!name.toLowerCase().includes(q))return false;
+    const st=getStateForLoc(name,lid);
+    if(sf==='here')return st==='here';
+    if(sf==='elsewhere')return st==='elsewhere';
+    if(sf==='unseen')return st==='none';
+    if(sf==='lc')return!isSeen(name)&&lastChanceStatus(name,lid)!==null;
+    return true;
+  });
+  // Sort
+  const unseen=disp.filter(n=>getStateForLoc(n,lid)!=='here');
+  const seen=disp.filter(n=>getStateForLoc(n,lid)==='here');
+  unseen.sort((a,b)=>{const ra=spSortRank(a,lid),rb=spSortRank(b,lid);if(ra!==rb)return ra-rb;return a.localeCompare(b);});
+  seen.sort((a,b)=>a.localeCompare(b));
+  disp=[...unseen,...seen];
+  let html='';let inSeen=false;
+  for(const name of disp){
+    const st=getStateForLoc(name,lid);const lc=lastChanceStatus(name,lid);
+    if(!inSeen&&st==='here'&&sf==='all'){inSeen=true;html+=`<div class="sp-section-hd">Seen here (${seen.length})</div>`;}
+    const nc=lc==='last'?'last-text':lc==='second'?'second-text':'';
+    const badge=lc==='last'?`<span class="lc-badge lc-last">last</span>`:lc==='second'?`<span class="lc-badge lc-second">2nd</span>`:'';
+    const fl=st==='elsewhere'?S.locations.find(l=>l.id===S.seenAt[name]):null;
+    const where=fl?`<div class="sp-where">· ${fl.icon} ${fl.name}</div>`:'';
+    const note=getNote(lid,name);
+    const ns=name.replace(/'/g,"&#39;");
+    // For Incidental stop, parse coords from note and show a Maps link
+    let noteHTML='';
+    if(note){
+      if(lid==='l_inc'){
+        // Try to extract coords from note format: [HH:MM] lat, lng
+        const coordMatch=note.match(/\[(\d{2}:\d{2})\]\s*([-\d.]+),\s*([-\d.]+)/);
+        if(coordMatch){
+          const time=coordMatch[1];const lat=coordMatch[2];const lng=coordMatch[3];
+          const mapsUrl=`https://www.google.com/maps?q=${lat},${lng}`;
+          noteHTML=`<div class="note-text">${time} · <a href="${mapsUrl}" target="_blank" style="color:var(--blue);text-decoration:none">📍 ${lat}, ${lng}</a></div>`;
+        } else if(note.match(/\[\d{2}:\d{2}\]/)){
+          // Has time but no coords yet (GPS still acquiring)
+          noteHTML=`<div class="note-text">${note}</div>`;
+        } else {
+          noteHTML=`<div class="note-text">${note}</div>`;
+        }
+      } else {
+        noteHTML=`<div class="note-text">${note}</div>`;
+      }
+    }
+    html+=`<div class="sp-item" data-name="${ns}" data-lid="${lid}">
+      <div class="sp-tap-area">${indHTML(st)}<div class="sp-info"><div class="sp-name ${nc}">${name}${isCustom(name)?` <span class="custom-badge">custom</span>`:''}</div>${where}${noteHTML}</div></div>
+      ${badge}
+      <div class="sp-actions">
+        <button class="note-btn" data-note-name="${ns}" data-note-lid="${lid}">✎</button>
+        ${_viewOnly?'':` <button class="rm-btn" data-rm-name="${ns}" data-rm-lid="${lid}" title="Remove from this stop">✕</button>`}
+      </div>
+    </div>`;
+  }
+  document.getElementById('sp-list').innerHTML=html||`<div class="empty">${sps.length?'No species match filter':'No species assigned'}</div>`;
+}
+
+function indHTML(st){
+  if(st==='here')return`<div class="ind ind-here"><div class="chk"></div></div>`;
+  if(st==='elsewhere')return`<div class="ind ind-else"><div class="dash"></div></div>`;
+  return`<div class="ind ind-none"></div>`;
+}
+
+function tapSP(name,lid){
+  if(_viewOnly)return; // view-only mode
+  const st=getStateForLoc(name,lid);
+  if(st==='none'){
+    S.seenAt[name]=lid;
+    // Auto-stamp time+GPS for Incidental sightings
+    if(lid==='l_inc'){
+      const timeStr=nowStr();
+      const existing=getNote(lid,name);
+      const prefix=`[${timeStr}]`;
+      if(!existing.includes(prefix)){
+        // Get GPS if available
+        if(navigator.geolocation){
+          navigator.geolocation.getCurrentPosition(pos=>{
+            const lat=pos.coords.latitude.toFixed(4);
+            const lng=pos.coords.longitude.toFixed(4);
+            setNote(lid,name,`${prefix} ${lat}, ${lng}`);
+            renderSPList();
+          },()=>{
+            setNote(lid,name,prefix);
+            renderSPList();
+          },{enableHighAccuracy:true,timeout:8000,maximumAge:0});
+        } else {
+          setNote(lid,name,prefix);
+        }
+      }
+    }
+  }
+  else if(st==='here'){
+    if(S.seenAt[name]===lid){const also=S.alsoAt[name]?[...S.alsoAt[name]]:[];if(also.length){S.seenAt[name]=also[0];S.alsoAt[name]=also.slice(1);}else{delete S.seenAt[name];}}
+    else{if(S.alsoAt[name])S.alsoAt[name]=S.alsoAt[name].filter(id=>id!==lid);}
+  }else{
+    if(!S.alsoAt[name])S.alsoAt[name]=[];if(!S.alsoAt[name].includes(lid))S.alsoAt[name].push(lid);
+  }
+  save();renderSPCardHeader();renderSPList();renderHeader();
+}
+
+function editNote(name,lid){
+  const note=getNote(lid,name);
+  const v=prompt(`Note for ${name}:`,note);
+  if(v===null)return;
+  setNote(lid,name,v);renderSPList();
+}
+
+// ==================== TIMES & GPS ====================
+function stampArrive(lid){if(_viewOnly)return;S.times[lid].arrive=nowStr();save();renderSPCardHeader();if(navigator.geolocation){navigator.geolocation.getCurrentPosition(pos=>{S.times[lid].lat=pos.coords.latitude.toFixed(6);S.times[lid].lng=pos.coords.longitude.toFixed(6);S.times[lid].accuracy=Math.round(pos.coords.accuracy);save();renderSPCardHeader();},()=>{},{enableHighAccuracy:true,timeout:15000,maximumAge:0});}}
+function stampDepart(lid){if(_viewOnly)return;S.times[lid].depart=nowStr();save();renderSPCardHeader();}
+function clearArrive(lid){if(_viewOnly)return;S.times[lid].arrive=null;S.times[lid].lat=null;S.times[lid].lng=null;S.times[lid].accuracy=null;save();renderSPCardHeader();}
+function clearDepart(lid){if(_viewOnly)return;S.times[lid].depart=null;save();renderSPCardHeader();}
+function clearGPS(lid){if(_viewOnly)return;S.times[lid].lat=null;S.times[lid].lng=null;S.times[lid].accuracy=null;save();renderSPCardHeader();}
+function toggleSkip(lid){if(_viewOnly)return;if(S.skipped[lid]){delete S.skipped[lid];}else{S.skipped[lid]=true;}save();renderSPCardHeader();renderSPList();renderHeader();}
+
+function removeStop(lid){
+  const loc=S.locations.find(l=>l.id===lid);if(!loc)return;
+  if(!confirm(`Remove "${loc.name}" from the route?\n\nSighting data for this stop will be reassigned.`))return;
+  S.locations=S.locations.filter(l=>l.id!==lid);
+  delete S.locSpecies[lid];delete S.times[lid];delete S.skipped[lid];
+  Object.keys(S.notes).forEach(k=>{if(k.startsWith(lid+'::'))delete S.notes[k];});
+  Object.keys(S.seenAt).forEach(name=>{
+    if(S.seenAt[name]===lid){const also=(S.alsoAt[name]||[]).filter(id=>id!==lid);if(also.length){S.seenAt[name]=also[0];S.alsoAt[name]=also.slice(1);}else{delete S.seenAt[name];}}
+    if(S.alsoAt[name])S.alsoAt[name]=(S.alsoAt[name]||[]).filter(id=>id!==lid);
+  });
+  closeSPCard();save();renderAll();
+}
+
+// ==================== INPUT MODAL ====================
+function closeInputModal(){document.getElementById('input-modal').classList.remove('show');}
+function inputModalBgClick(e){if(e.target===document.getElementById('input-modal'))closeInputModal();}
+
+const ALL_ICONS=['📍','💧','🌲','🌊','🌾','🏔','🌿','🏙','🌅','🪨','🏕️','🛣️','🌉','🐟','🌳','🏠','⛰️'];
+let _selIcon='📍';
+
+function showAddStopModal(){
+  _selIcon='📍';
+  document.getElementById('input-modal-title').textContent='Add Unplanned Stop';
+  document.getElementById('input-modal-field').value='';
+  document.getElementById('input-modal-field').placeholder='Stop name...';
+  document.getElementById('input-modal-extra').innerHTML=
+    `<div style="font-size:12px;color:var(--text2);margin-bottom:6px">Icon</div>`+
+    `<div style="display:flex;flex-wrap:wrap;gap:6px">`+
+    ALL_ICONS.map(ic=>`<span onclick="selectStopIcon('${ic}',this)" style="font-size:22px;padding:4px 6px;border-radius:6px;border:2px solid ${ic==='📍'?'var(--green)':'transparent'};cursor:pointer">${ic}</span>`).join('')+
+    `</div>`;
+  document.getElementById('input-modal-btn').textContent='Add Stop';
+  document.getElementById('input-modal-btn').onclick=commitAddStop;
+  document.getElementById('input-modal').classList.add('show');
+  setTimeout(()=>document.getElementById('input-modal-field').focus(),100);
+}
+window.selectStopIcon=function(icon,el){
+  _selIcon=icon;
+  document.querySelectorAll('#input-modal-extra span').forEach(e=>e.style.borderColor='transparent');
+  el.style.borderColor='var(--green)';
+};
+function commitAddStop(){
+  const name=document.getElementById('input-modal-field').value.trim();
+  if(!name){document.getElementById('input-modal-field').style.borderColor='var(--red)';return;}
+  const id='u'+Date.now();
+  S.locations.push({id,name,icon:_selIcon,planned:false});
+  S.locSpecies[id]=[];
+  S.times[id]={arrive:null,depart:null,lat:null,lng:null,accuracy:null,estArrive:null,estDepart:null};
+  save();closeInputModal();renderLocList();renderHeader();
+}
+
+function showAddMasterModal(){
+  document.getElementById('input-modal-title').textContent='Add to Master List';
+  document.getElementById('input-modal-field').value='';
+  document.getElementById('input-modal-field').placeholder='Species name...';
+  document.getElementById('input-modal-extra').innerHTML=`<div style="font-size:12px;color:var(--text2)">Will be marked as <strong>custom</strong> and added to the master list.</div>`;
+  document.getElementById('input-modal-btn').textContent='Add Species';
+  document.getElementById('input-modal-btn').onclick=commitAddMasterSpecies;
+  document.getElementById('input-modal').classList.add('show');
+  setTimeout(()=>document.getElementById('input-modal-field').focus(),100);
+}
+function commitAddMasterSpecies(){
+  const name=document.getElementById('input-modal-field').value.trim();
+  if(!name){document.getElementById('input-modal-field').style.borderColor='var(--red)';return;}
+  if(allSpecies().some(s=>s.toLowerCase()===name.toLowerCase())){
+    document.getElementById('input-modal-field').style.borderColor='var(--red)';
+    document.getElementById('input-modal-extra').innerHTML=`<div style="font-size:12px;color:var(--red)">"${name}" already exists in the master list.</div>`;
+    return;
+  }
+  S.masterList.push(name);if(!S.customSpecies)S.customSpecies=[];S.customSpecies.push(name);
+  save();closeInputModal();renderMaster();
+}
+
+// ==================== ADD SPECIES MODAL ====================
+let _modalLid=null;
+function openAddModal(lid){
+  _modalLid=lid;
+  document.getElementById('modal-title').textContent='Add species';
+  document.getElementById('modal-search-inp').value='';
+  rebuildModalList();
+  document.getElementById('modal').classList.add('show');
+  setTimeout(()=>document.getElementById('modal-search-inp').focus(),100);
+}
+function closeModal(){document.getElementById('modal').classList.remove('show');_modalLid=null;renderSPList();}
+function modalBgClick(e){if(e.target===document.getElementById('modal'))closeModal();}
+
+// Store species list for event delegation
+let _modalSpeciesList=[];
+
+function rebuildModalList(){
+  if(!_modalLid)return;
+  const ex=new Set(S.locSpecies[_modalLid]||[]);
+  const q=(document.getElementById('modal-search-inp')?.value||'').toLowerCase();
+  _modalSpeciesList=allSpecies().filter(s=>!ex.has(s)&&(!q||s.toLowerCase().includes(q)));
+  const el=document.getElementById('modal-list');
+  if(!_modalSpeciesList.length){
+    el.innerHTML=`<div class="empty">No matching species</div>`;
+    return;
+  }
+  el.innerHTML=_modalSpeciesList.map((s,i)=>
+    `<div class="modal-sp-item" data-idx="${i}"><div class="modal-cb"></div><span>${s}</span></div>`
+  ).join('');
+}
+
+// Event delegation on modal list — handles both touch and click
+document.addEventListener('DOMContentLoaded',()=>{
+  // Modal list delegation — with scroll detection
+  const modalList=document.getElementById('modal-list');
+  if(modalList){
+    let mTouchStartY=0;let mDidScroll=false;
+    modalList.addEventListener('touchstart',(e)=>{mTouchStartY=e.touches[0].clientY;mDidScroll=false;},{passive:true});
+    modalList.addEventListener('touchmove',(e)=>{if(Math.abs(e.touches[0].clientY-mTouchStartY)>8)mDidScroll=true;},{passive:true});
+    function handleModalTap(e){
+      if(mDidScroll)return;
+      const item=e.target.closest('.modal-sp-item');
+      if(!item||!_modalLid)return;
+      const idx=parseInt(item.getAttribute('data-idx'));
+      const name=_modalSpeciesList[idx];
+      if(!name)return;
+      item.querySelector('.modal-cb').style.background='var(--green)';
+      item.querySelector('.modal-cb').style.borderColor='var(--green)';
+      if(!S.locSpecies[_modalLid])S.locSpecies[_modalLid]=[];
+      if(!S.locSpecies[_modalLid].includes(name))S.locSpecies[_modalLid].push(name);
+      save();
+      _modalSpeciesList.splice(idx,1);
+      setTimeout(()=>rebuildModalList(),150);
+      renderSPCardHeader();
+    }
+    modalList.addEventListener('touchend',handleModalTap,{passive:true});
+    modalList.addEventListener('click',handleModalTap);
+  }
+
+  // Species list delegation — with scroll detection to prevent accidental taps
+  const spList=document.getElementById('sp-list');
+  if(spList){
+    let touchStartY=0;let touchStartX=0;let didScroll=false;
+    spList.addEventListener('touchstart',(e)=>{
+      touchStartY=e.touches[0].clientY;
+      touchStartX=e.touches[0].clientX;
+      didScroll=false;
+    },{passive:true});
+    spList.addEventListener('touchmove',(e)=>{
+      const dy=Math.abs(e.touches[0].clientY-touchStartY);
+      const dx=Math.abs(e.touches[0].clientX-touchStartX);
+      if(dy>8||dx>8)didScroll=true; // moved more than 8px = scrolling
+    },{passive:true});
+    function handleSpTap(e){
+      // Ignore if user was scrolling
+      if(didScroll)return;
+      // Remove button
+      const rmBtn=e.target.closest('.rm-btn');
+      if(rmBtn){
+        e.stopPropagation();
+        const name=rmBtn.getAttribute('data-rm-name')?.replace(/&#39;/g,"'");
+        const lid=rmBtn.getAttribute('data-rm-lid');
+        if(name&&lid)removeSpeciesFromLoc(lid,name);
+        return;
+      }
+      // Note button
+      const noteBtn=e.target.closest('.note-btn');
+      if(noteBtn){
+        e.stopPropagation();
+        const name=noteBtn.getAttribute('data-note-name')?.replace(/&#39;/g,"'");
+        const lid=noteBtn.getAttribute('data-note-lid');
+        if(name&&lid)editNote(name,lid);
+        return;
+      }
+      // Species tap area only
+      const tapArea=e.target.closest('.sp-tap-area');
+      if(!tapArea)return;
+      const item=tapArea.closest('.sp-item');
+      if(!item)return;
+      const name=item.getAttribute('data-name')?.replace(/&#39;/g,"'");
+      const lid=item.getAttribute('data-lid');
+      if(name&&lid)tapSP(name,lid);
+    }
+    spList.addEventListener('touchend',handleSpTap,{passive:true});
+    spList.addEventListener('click',handleSpTap);
+  }
+
+  // Location list delegation — with scroll detection
+  const locList=document.getElementById('loc-list');
+  if(locList){
+    let lTouchStartY=0;let lDidScroll=false;
+    locList.addEventListener('touchstart',(e)=>{lTouchStartY=e.touches[0].clientY;lDidScroll=false;},{passive:true});
+    locList.addEventListener('touchmove',(e)=>{if(Math.abs(e.touches[0].clientY-lTouchStartY)>8)lDidScroll=true;},{passive:true});
+    function handleLocTap(e){
+      if(lDidScroll)return;
+      const item=e.target.closest('.loc-item');
+      if(!item)return;
+      const lid=item.getAttribute('data-locid');
+      if(lid)openSPCard(lid);
+    }
+    locList.addEventListener('touchend',handleLocTap,{passive:true});
+    locList.addEventListener('click',handleLocTap);
+  }
+
+  // Freeform species entry — enter key support
+  const freeformInp=document.getElementById('modal-freeform-inp');
+  if(freeformInp){
+    freeformInp.addEventListener('keydown',(e)=>{if(e.key==='Enter'){e.preventDefault();addFreeformSpecies();}});
+  }
+});
+
+function addSP(name){
+  if(!_modalLid)return;
+  if(!S.locSpecies[_modalLid])S.locSpecies[_modalLid]=[];
+  if(!S.locSpecies[_modalLid].includes(name))S.locSpecies[_modalLid].push(name);
+  save();rebuildModalList();renderSPCardHeader();
+}
+
+function addFreeformSpecies(){
+  if(!_modalLid)return;
+  const inp=document.getElementById('modal-freeform-inp');
+  const name=(inp?.value||'').trim();
+  if(!name)return;
+  // Add to master list if not already there
+  if(!allSpecies().some(s=>s.toLowerCase()===name.toLowerCase())){
+    S.masterList.push(name);
+    if(!S.customSpecies)S.customSpecies=[];
+    S.customSpecies.push(name);
+  }
+  // Add to location
+  if(!S.locSpecies[_modalLid])S.locSpecies[_modalLid]=[];
+  if(!S.locSpecies[_modalLid].some(s=>s.toLowerCase()===name.toLowerCase())){
+    // Use exact match from master if exists, otherwise use typed name
+    const existing=allSpecies().find(s=>s.toLowerCase()===name.toLowerCase());
+    S.locSpecies[_modalLid].push(existing||name);
+  }
+  inp.value='';
+  save();rebuildModalList();renderSPCardHeader();
+  // Brief visual confirmation
+  inp.placeholder='Added! Type another...';
+  setTimeout(()=>{inp.placeholder='Species name...';},2000);
+}
+
+// ==================== PHYLO ORDER ====================
+const FAMILY_GROUPS=[{label:"Waterfowl",species:["Snow Goose","Ross's Goose","Greater White-fronted Goose","Brant","Cackling Goose","Canada Goose","Trumpeter Swan","Tundra Swan","Wood Duck","Blue-winged Teal","Cinnamon Teal","Northern Shoveler","Gadwall","Eurasian Wigeon","American Wigeon","Mallard","Northern Pintail","Green-winged Teal","Canvasback","Redhead","Ring-necked Duck","Tufted Duck","Greater Scaup","Lesser Scaup","Harlequin Duck","Surf Scoter","White-winged Scoter","Black Scoter","Long-tailed Duck","Bufflehead","Common Goldeneye","Barrow's Goldeneye","Hooded Merganser","Common Merganser","Red-breasted Merganser","Ruddy Duck"]},{label:"Quail & Allies",species:["Mountain Quail","California Quail","Wild Turkey","Ruffed Grouse","Greater Sage-Grouse","Sooty Grouse","Ring-necked Pheasant","Chukar"]},{label:"Grebes",species:["Pied-billed Grebe","Horned Grebe","Red-necked Grebe","Eared Grebe","Western Grebe","Clark's Grebe"]},{label:"Pigeons & Doves",species:["Rock Pigeon","Band-tailed Pigeon","Eurasian Collared-Dove","Mourning Dove"]},{label:"Nightjars & Swifts",species:["Common Nighthawk","Common Poorwill","Black Swift","Vaux's Swift","White-throated Swift"]},{label:"Hummingbirds",species:["Black-chinned Hummingbird","Anna's Hummingbird","Costa's Hummingbird","Calliope Hummingbird","Rufous Hummingbird","Allen's Hummingbird"]},{label:"Rails & Coots",species:["Virginia Rail","Sora","American Coot","Yellow Rail"]},{label:"Cranes",species:["Sandhill Crane"]},{label:"Stilts, Avocets & Oystercatchers",species:["Black-necked Stilt","American Avocet","Black Oystercatcher"]},{label:"Plovers",species:["Black-bellied Plover","American Golden-Plover","Pacific Golden-Plover","Killdeer","Semipalmated Plover","Snowy Plover"]},{label:"Sandpipers & Phalaropes",species:["Hudsonian Whimbrel","Long-billed Curlew","Marbled Godwit","Ruddy Turnstone","Black Turnstone","Red Knot","Surfbird","Sanderling","Dunlin","Baird's Sandpiper","Least Sandpiper","Western Sandpiper","Pectoral Sandpiper","Semipalmated Sandpiper","Short-billed Dowitcher","Long-billed Dowitcher","Wilson's Snipe","Spotted Sandpiper","Solitary Sandpiper","Wandering Tattler","Lesser Yellowlegs","Willet","Greater Yellowlegs","Wilson's Phalarope","Red-necked Phalarope"]},{label:"Auks",species:["Common Murre","Pigeon Guillemot","Marbled Murrelet","Cassin's Auklet","Rhinoceros Auklet","Tufted Puffin"]},{label:"Gulls & Terns",species:["Black-legged Kittiwake","Bonaparte's Gull","Franklin's Gull","Heermann's Gull","Short-billed Gull","Ring-billed Gull","Western Gull","California Gull","American Herring Gull","Iceland Gull","Glaucous-winged Gull","Glaucous Gull","Elegant Tern","Caspian Tern","Black Tern","Common Tern","Forster's Tern"]},{label:"Loons",species:["Red-throated Loon","Pacific Loon","Common Loon"]},{label:"Petrels & Shearwaters",species:["Fork-tailed Storm-Petrel","Sooty Shearwater"]},{label:"Pelicans",species:["American White Pelican","Brown Pelican"]},{label:"Cormorants",species:["Brandt's Cormorant","Pelagic Cormorant","Double-crested Cormorant"]},{label:"Herons & Egrets",species:["American Bittern","Snowy Egret","Black-crowned Night Heron","Green Heron","Great Egret","Great Blue Heron"]},{label:"Ibises",species:["White-faced Ibis"]},{label:"New World Vultures",species:["Turkey Vulture"]},{label:"Osprey & Hawks",species:["Osprey","White-tailed Kite","Golden Eagle","Northern Harrier","Sharp-shinned Hawk","Cooper's Hawk","American Goshawk","Bald Eagle","Red-shouldered Hawk","Swainson's Hawk","Red-tailed Hawk","Rough-legged Hawk","Ferruginous Hawk"]},{label:"Owls",species:["American Barn Owl","Flammulated Owl","Western Screech-Owl","Great Horned Owl","Northern Pygmy-Owl","Burrowing Owl","Spotted Owl","Barred Owl","Great Gray Owl","Long-eared Owl","Short-eared Owl","Northern Saw-whet Owl"]},{label:"Kingfishers",species:["Belted Kingfisher"]},{label:"Woodpeckers",species:["Lewis's Woodpecker","Acorn Woodpecker","Williamson's Sapsucker","Red-naped Sapsucker","Red-breasted Sapsucker","American Three-toed Woodpecker","Black-backed Woodpecker","Downy Woodpecker","Hairy Woodpecker","White-headed Woodpecker","Northern Flicker","Pileated Woodpecker"]},{label:"Falcons",species:["American Kestrel","Merlin","Peregrine Falcon","Prairie Falcon"]},{label:"Flycatchers",species:["Ash-throated Flycatcher","Western Kingbird","Eastern Kingbird","Olive-sided Flycatcher","Western Wood-Pewee","Willow Flycatcher","Least Flycatcher","Hammond's Flycatcher","Gray Flycatcher","Dusky Flycatcher","Western Flycatcher","Black Phoebe","Say's Phoebe"]},{label:"Vireos",species:["Hutton's Vireo","Cassin's Vireo","Western Warbling Vireo","Red-eyed Vireo"]},{label:"Shrikes",species:["Loggerhead Shrike","Northern Shrike"]},{label:"Jays, Crows & Ravens",species:["Canada Jay","Pinyon Jay","Steller's Jay","California Scrub-Jay","Clark's Nutcracker","Black-billed Magpie","American Crow","Common Raven"]},{label:"Chickadees & Titmice",species:["Black-capped Chickadee","Mountain Chickadee","Chestnut-backed Chickadee","Oak Titmouse"]},{label:"Larks",species:["Horned Lark"]},{label:"Swallows",species:["Bank Swallow","Tree Swallow","Violet-green Swallow","Northern Rough-winged Swallow","Purple Martin","Barn Swallow","Cliff Swallow"]},{label:"Bushtit",species:["Bushtit"]},{label:"Wrentit",species:["Wrentit"]},{label:"Kinglets",species:["Golden-crowned Kinglet","Ruby-crowned Kinglet"]},{label:"Waxwings",species:["Cedar Waxwing"]},{label:"Nuthatches",species:["Red-breasted Nuthatch","White-breasted Nuthatch","Pygmy Nuthatch"]},{label:"Creepers",species:["Brown Creeper"]},{label:"Gnatcatchers",species:["Blue-gray Gnatcatcher"]},{label:"Wrens",species:["Rock Wren","Canyon Wren","Bewick's Wren","Northern House Wren","Pacific Wren","Marsh Wren"]},{label:"Mockingbirds & Thrashers",species:["Gray Catbird","Sage Thrasher","Northern Mockingbird"]},{label:"Starlings",species:["European Starling"]},{label:"Dippers",species:["American Dipper"]},{label:"Thrushes",species:["Western Bluebird","Mountain Bluebird","Townsend's Solitaire","Swainson's Thrush","Hermit Thrush","American Robin","Varied Thrush"]},{label:"House Sparrow",species:["House Sparrow"]},{label:"Pipits",species:["American Pipit"]},{label:"Finches",species:["Evening Grosbeak","Gray-crowned Rosy-Finch","House Finch","Purple Finch","Cassin's Finch","Red Crossbill","Pine Siskin","Lesser Goldfinch","American Goldfinch"]},{label:"Sparrows & Towhees",species:["Grasshopper Sparrow","Black-throated Sparrow","Lark Sparrow","Chipping Sparrow","Brewer's Sparrow","Fox Sparrow","Dark-eyed Junco","White-crowned Sparrow","Golden-crowned Sparrow","White-throated Sparrow","Sagebrush Sparrow","Vesper Sparrow","Savannah Sparrow","Song Sparrow","Lincoln's Sparrow","California Towhee","Green-tailed Towhee","Spotted Towhee"]},{label:"Yellow-breasted Chat",species:["Yellow-breasted Chat"]},{label:"Blackbirds & Orioles",species:["Yellow-headed Blackbird","Western Meadowlark","Bullock's Oriole","Red-winged Blackbird","Tricolored Blackbird","Brown-headed Cowbird","Brewer's Blackbird","Great-tailed Grackle"]},{label:"Wood-Warblers",species:["Northern Waterthrush","Orange-crowned Warbler","Nashville Warbler","MacGillivray's Warbler","Common Yellowthroat","Northern Yellow Warbler","Yellow-rumped Warbler","Black-throated Gray Warbler","Townsend's Warbler","Hermit Warbler","Wilson's Warbler"]},{label:"Cardinals & Tanagers",species:["Western Tanager","Black-headed Grosbeak","Lazuli Bunting"]}];
+const PHYLO_ORDER={};FAMILY_GROUPS.forEach((g,gi)=>g.species.forEach((s,si)=>{PHYLO_ORDER[s]=gi*1000+si;}));
+function phyloRank(n){return PHYLO_ORDER[n]??99999;}
+
+// ==================== MASTER LIST ====================
+function renderMaster(){
+  const search=(document.getElementById('master-search')?.value||'').toLowerCase();
+  const filter=S.masterFilter||'all';
+  const order=S.masterOrder||'alpha';
+  const locMap={};S.locations.forEach(loc=>(S.locSpecies[loc.id]||[]).forEach(n=>{if(!locMap[n])locMap[n]=[];locMap[n].push(loc);}));
+  const all=allSpecies();
+  function pf(s){if(search&&!s.toLowerCase().includes(search))return false;if(filter==='seen')return isSeen(s);if(filter==='unseen')return!isSeen(s);if(filter==='listed')return!!locMap[s];if(filter==='custom')return isCustom(s);return true;}
+  let unL=all.filter(s=>!isSeen(s)&&pf(s));
+  let seL=all.filter(s=>isSeen(s)&&pf(s));
+  if(order==='phylo'){
+    unL=unL.slice().sort((a,b)=>phyloRank(a)-phyloRank(b));
+    seL=seL.slice().sort((a,b)=>phyloRank(a)-phyloRank(b));
+  }
+  // Filter + order bar
+  document.getElementById('master-filter-bar').innerHTML=
+    ['all','seen','unseen','listed','custom'].map(f=>`<button class="f-btn ${filter===f?'on':''}" onclick="S.masterFilter='${f}';saveLocal();renderMaster()">${f.charAt(0).toUpperCase()+f.slice(1)}</button>`).join('')+
+    `<div class="order-toggle"><button class="o-btn ${order==='alpha'?'on':''}" onclick="S.masterOrder='alpha';saveLocal();renderMaster()">A–Z</button><button class="o-btn ${order==='phylo'?'on':''}" onclick="S.masterOrder='phylo';saveLocal();renderMaster()">Phylo</button></div>`;
+  const combined=[...unL,...seL];
+  if(!combined.length){document.getElementById('master-list').innerHTML=`<div class="empty">No species match</div>`;return;}
+  let html='';let inSeen=false;
+  for(const s of combined){
+    if(!inSeen&&isSeen(s)&&unL.length>0){inSeen=true;html+=`<div class="sp-section-hd">Seen (${seL.length})</div>`;}
+    const locs=locMap[s]||[];const fl=S.seenAt[s]?S.locations.find(l=>l.id===S.seenAt[s]):null;
+    const locNames=locs.map(l=>`<span class="m-pill ${getStateForLoc(s,l.id)==='here'?'m-pill-here':''}">${l.icon} ${l.name}</span>`).join('');
+    html+=`<div class="m-item">${indHTML(isSeen(s)?'here':'none')}<div style="flex:1;min-width:0"><div class="m-name">${s}${isCustom(s)?` <span class="custom-badge">custom</span>`:''}</div>${fl?`<div class="m-sub">First: ${fl.icon} ${fl.name}</div>`:''}${locs.length?`<div class="m-locs">${locNames}</div>`:`<div class="unassigned">not assigned</div>`}</div></div>`;
+  }
+  document.getElementById('master-list').innerHTML=html;
+}
+
+// ==================== MANAGE ====================
+function renderManage(){
+  document.getElementById('manage-list').innerHTML=S.locations.map((l,i)=>{
+    const{here,total}=seenHereCount(l.id);const t=S.times[l.id]||{};
+    const sk=!!S.skipped[l.id];const url=navURL(l.id);
+    const act=t.arrive?`${t.arrive}–${t.depart||'?'}`:t.estArrive?`~${t.estArrive}–${t.estDepart||'?'}`:'—';
+    return`<div class="manage-item" style="${sk?'opacity:.5':''}"><span style="font-size:11px;color:var(--text3);min-width:22px">${i+1}</span><span style="font-size:17px">${l.icon}</span><div class="manage-info"><div class="manage-name">${l.name}</div><div class="manage-times">${act} · ${here}/${total} seen${url?` · <a href="${url}" target="_blank" class="manage-nav">🗺 Nav</a>`:''}</div></div></div>`;
+  }).join('');
+}
+
+// ==================== EXPORT ====================
+function buildJSON(){
+  const seen=Object.keys(S.seenAt);const ls={};
+  seen.forEach(name=>{const p=S.seenAt[name];if(!ls[p])ls[p]=[];ls[p].push(name);(S.alsoAt[name]||[]).forEach(lid=>{if(!ls[lid])ls[lid]=[];ls[lid].push(name);});});
+  return{exportedAt:new Date().toISOString(),countStarted:new Date(S.startTime).toISOString(),summary:{speciesSeen:seen.length,locationsVisited:S.locations.filter(l=>S.times[l.id]?.arrive).length,totalLocations:S.locations.length},masterList:S.masterList,customSpecies:S.customSpecies,sightings:Object.fromEntries(seen.map(name=>{const locs=[S.seenAt[name],...(S.alsoAt[name]||[])].map(id=>{const l=S.locations.find(x=>x.id===id);return l?`${l.icon} ${l.name}`:id;});return[name,locs];})),notes:S.notes,locations:S.locations.map(l=>{const t=S.times[l.id]||{};const sps=ls[l.id]||[];const c=LOC_COORDS[l.id];return{name:`${l.icon} ${l.name}`,planned:l.planned,skipped:!!S.skipped[l.id],coordinates:c?{lat:c[0],lng:c[1]}:null,estArrive:t.estArrive||null,estDepart:t.estDepart||null,arrive:t.arrive||null,depart:t.depart||null,duration:calcDur(t.arrive,t.depart)||null,gps:t.lat?{lat:parseFloat(t.lat),lng:parseFloat(t.lng),accuracy:t.accuracy}:null,speciesSeen:sps.sort().map(n=>({name:n,note:getNote(l.id,n)||null})),speciesAssigned:(S.locSpecies[l.id]||[]).sort()};})};
+}
+function downloadJSON(){const blob=new Blob([JSON.stringify(buildJSON(),null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`bird-count-${new Date().toISOString().slice(0,10)}.json`;document.body.appendChild(a);a.click();document.body.removeChild(a);}
+function buildReport(){
+  const seen=Object.keys(S.seenAt).sort();const seenSet=new Set(seen);
+  let locRows='';
+  S.locations.forEach((l,i)=>{
+    const t=S.times[l.id]||{};const locSeen=(S.locSpecies[l.id]||[]).filter(n=>getStateForLoc(n,l.id)==='here').sort();
+    const sk=!!S.skipped[l.id];if(!t.arrive&&!t.estArrive&&!locSeen.length&&!sk)return;
+    const c=LOC_COORDS[l.id];const navLink=c?`<a href="https://www.google.com/maps/dir/?api=1&destination=${c[0]},${c[1]}" style="font-size:11px;color:#1a73e8">🗺 Navigate</a>`:'';
+    const dur=calcDur(t.arrive,t.depart);
+    locRows+=`<div style="margin-bottom:14px;border:1px solid #dde8dd;border-radius:8px;overflow:hidden"><div style="background:#f0f4f0;padding:8px 12px;display:flex;align-items:center;gap:8px"><span>${l.icon}</span><span style="font-size:14px;font-weight:600;color:#2c4a28;flex:1">${i+1}. ${l.name}${sk?' <em style="color:#888">(skipped)</em>':''}</span>${navLink}${t.arrive?`<span style="font-size:11px;color:#4a6741">▶${t.arrive}${t.depart?' ⏹'+t.depart:''} ${dur?'('+dur+')':''}</span>`:''}</div><div style="padding:8px 12px;font-size:12px">${locSeen.length?locSeen.join(' · '):'<span style="color:#999">No species recorded</span>'}</div></div>`;
+  });
+  const dateStr=new Date(S.startTime).toLocaleDateString([],{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  return`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Bird Count Report</title><style>body{font-family:-apple-system,sans-serif;color:#222;max-width:860px;margin:0 auto;padding:2rem;background:#fff}h1{font-size:24px;color:#1a4a16}h2{font-size:16px;color:#2c5828;margin:2rem 0 .8rem;border-bottom:2px solid #c8e0c4;padding-bottom:6px}</style></head><body><h1>🦅 24-Hour Bird Count</h1><p>${dateStr} · ${seen.length} species seen</p><h2>Locations</h2>${locRows}</body></html>`;
+}
+function downloadReport(){const blob=new Blob([buildReport()],{type:'text/html'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`bird-count-report-${new Date().toISOString().slice(0,10)}.html`;document.body.appendChild(a);a.click();document.body.removeChild(a);}
+function resetAll(){
+  if(_viewOnly){alert('Reset is not available in View Only mode.');return;}
+  // PIN protection — only the session creator should know this
+  if(sessionCode){
+    const pin=prompt('Enter admin PIN to reset all data:');
+    if(pin===null)return;
+    if(pin!=='7712'){alert('Incorrect PIN.');return;}
+  }
+  if(!confirm('Reset all sightings, times, GPS and notes? Species assignments are kept.'))return;
+  S.seenAt={};S.alsoAt={};S.notes={};S.skipped={};S.startTime=Date.now();S.locations.forEach(l=>{const t=S.times[l.id]||{};S.times[l.id]={arrive:null,depart:null,lat:null,lng:null,accuracy:null,estArrive:t.estArrive||l.ea||null,estDepart:t.estDepart||l.ed||null};});save();renderAll();
+}
+
+// ==================== FIREBASE SYNC ====================
+const FB_CONFIG={
+  apiKey:"AIzaSyAhVdAWLSRR3rpaFb4PVF1wUV77SMYu-AU",
+  authDomain:"birdcount-2025.firebaseapp.com",
+  databaseURL:"https://birdcount-2025-default-rtdb.firebaseio.com",
+  projectId:"birdcount-2025",
+  storageBucket:"birdcount-2025.firebasestorage.app",
+  messagingSenderId:"1072744840931",
+  appId:"1:1072744840931:web:4124f44919a90726450fd6"
+};
+
+let db=null,sessionCode=null,_syncEnabled=false,_localChange=false,_syncListenerAttached=false,_viewOnly=false;
+
+async function initFirebase(){
+  try{
+    const {initializeApp}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
+    const {getDatabase,ref,set,onValue,get}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js');
+    window._fbApp=initializeApp(FB_CONFIG,FB_CONFIG.appId);
+    db=getDatabase(window._fbApp);
+    window._fbRef=ref;window._fbSet=set;window._fbOnValue=onValue;window._fbGet=get;
+    return true;
+  }catch(e){console.warn('Firebase init failed:',e);return false;}
+}
+
+function syncKey(k){return k.replace(/[.#$\[\]]/g,'_');}
+
+function buildSyncPayload(){
+  const times={};
+  S.locations.forEach(l=>{
+    const t=S.times[l.id]||{};
+    times[l.id]={arrive:t.arrive||null,depart:t.depart||null,lat:t.lat||null,lng:t.lng||null,accuracy:t.accuracy||null,estArrive:t.estArrive||null,estDepart:t.estDepart||null};
+  });
+  const seenAt={};Object.entries(S.seenAt).forEach(([k,v])=>{seenAt[syncKey(k)]=v;});
+  const alsoAt={};Object.entries(S.alsoAt||{}).forEach(([k,v])=>{alsoAt[syncKey(k)]=v;});
+  const notes={};Object.entries(S.notes||{}).forEach(([k,v])=>{notes[syncKey(k)]=v;});
+  // Sync locSpecies additions — only species added beyond the initial list
+  const locSpeciesAdded={};
+  S.locations.forEach(l=>{
+    const initial=INITIAL_LOC_SPECIES[l.id]||[];
+    const current=S.locSpecies[l.id]||[];
+    const added=current.filter(s=>!initial.includes(s));
+    if(added.length)locSpeciesAdded[l.id]=added;
+  });
+  // Sync locSpecies removals — initial species that were removed
+  const locSpeciesRemoved={};
+  S.locations.forEach(l=>{
+    const initial=INITIAL_LOC_SPECIES[l.id]||[];
+    const current=S.locSpecies[l.id]||[];
+    const removed=initial.filter(s=>!current.includes(s));
+    if(removed.length)locSpeciesRemoved[l.id]=removed;
+  });
+  return{seenAt,alsoAt,notes,skipped:S.skipped||{},times,locSpeciesAdded,locSpeciesRemoved,startTime:S.startTime,updatedAt:Date.now()};
+}
+
+function applySyncPayload(data){
+  if(!data)return;
+  try{
+    // Save UI state that should never be overwritten by sync
+    const savedSpFilter=S.spFilter;
+    const savedSpOrder=S.spOrder;
+    const savedMasterFilter=S.masterFilter;
+    const savedMasterOrder=S.masterOrder;
+    // Always ensure locSpecies is initialized from INITIAL_LOC_SPECIES
+    S.locations.forEach(l=>{
+      if(!S.locSpecies[l.id]||S.locSpecies[l.id].length===0){
+        S.locSpecies[l.id]=[...(INITIAL_LOC_SPECIES[l.id]||[])];
+      }
+    });
+    // Apply removals first, then additions
+    if(data.locSpeciesRemoved){
+      Object.entries(data.locSpeciesRemoved).forEach(([lid,removed])=>{
+        if(S.locSpecies[lid])S.locSpecies[lid]=S.locSpecies[lid].filter(s=>!removed.includes(s));
+      });
+    }
+    // Apply any added species from sync
+    if(data.locSpeciesAdded){
+      Object.entries(data.locSpeciesAdded).forEach(([lid,added])=>{
+        if(!S.locSpecies[lid])S.locSpecies[lid]=[...(INITIAL_LOC_SPECIES[lid]||[])];
+        added.forEach(s=>{if(!S.locSpecies[lid].includes(s))S.locSpecies[lid].push(s);});
+      });
+    }
+    if(data.seenAt)S.seenAt=Object.assign({},data.seenAt);
+    if(data.alsoAt){S.alsoAt={};Object.entries(data.alsoAt).forEach(([k,v])=>{S.alsoAt[k]=Array.isArray(v)?v:Object.values(v||{});});}
+    if(data.notes)S.notes=Object.assign({},data.notes);
+    if(data.skipped)S.skipped=Object.assign({},data.skipped);
+    if(data.startTime)S.startTime=data.startTime;
+    if(data.times){
+      Object.entries(data.times).forEach(([lid,t])=>{
+        if(!t)return;
+        const local=S.times[lid]||{};
+        S.times[lid]={
+          arrive:t.arrive||null,depart:t.depart||null,
+          lat:t.lat||null,lng:t.lng||null,accuracy:t.accuracy||null,
+          estArrive:t.estArrive||local.estArrive||null,
+          estDepart:t.estDepart||local.estDepart||null
+        };
+      });
+    }
+    // Restore UI state — never let sync overwrite these
+    S.spFilter=savedSpFilter;
+    S.spOrder=savedSpOrder;
+    S.masterFilter=savedMasterFilter;
+    S.masterOrder=savedMasterOrder;
+  }catch(e){console.warn('applySyncPayload error:',e);}
+}
+
+let _lastPushedAt=0;
+const _deviceId=Math.random().toString(36).slice(2);
+
+async function pushSync(){
+  if(!_syncEnabled||!db||!sessionCode)return;
+  try{
+    const payload=buildSyncPayload();
+    payload.deviceId=_deviceId;
+    _lastPushedAt=payload.updatedAt;
+    await window._fbSet(window._fbRef(db,`sessions/${sessionCode}/data`),payload);
+  }catch(e){console.warn('Sync push failed:',e);}
+}
+
+function attachSyncListener(){
+  if(_syncListenerAttached||!db||!sessionCode)return;
+  _syncListenerAttached=true;
+  let lastApplied=0;
+  window._fbOnValue(window._fbRef(db,`sessions/${sessionCode}/data`),(snap)=>{
+    const data=snap.val();if(!data)return;
+    // Ignore our own pushes using device ID
+    if(data.deviceId===_deviceId)return;
+    const remoteTs=data.updatedAt||0;
+    if(remoteTs<=lastApplied)return;
+    lastApplied=remoteTs;
+    applySyncPayload(data);
+    saveLocal();
+    updateSyncStatus('synced');
+    // Never call renderAll() — it resets the view and closes open stop cards
+    // Instead do surgical updates only
+    renderHeader();
+    if(currentLoc){
+      // User is inside a stop card — update species list and card header only
+      renderSPCardHeader();
+      renderSPList();
+    } else if(S.view==='locations'){
+      renderLocList();
+    } else if(S.view==='master'){
+      renderMaster();
+    } else if(S.view==='manage'){
+      renderManage();
+    }
+  });
+}
+
+function updateSyncStatus(status){
+  const el=document.getElementById('sync-status');if(!el)return;
+  const viewBadge=_viewOnly?` <span style="font-size:10px;background:var(--amber-bg);color:var(--amber);border-radius:4px;padding:1px 5px">View Only</span>`:'';
+  if(status==='synced')el.innerHTML=`<span style="color:var(--green)">● Live</span>${viewBadge}`;
+  else if(status==='offline')el.innerHTML=`<span style="color:var(--amber)">● Offline</span>${viewBadge}`;
+  else if(status==='connecting')el.innerHTML=`<span style="color:var(--text2)">● Connecting…</span>`;
+  else el.innerHTML='';
+}
+
+// ==================== SESSION UI ====================
+function showSessionScreen(){
+  document.getElementById('main').style.display='none';
+  document.getElementById('header').style.display='none';
+  const screen=document.getElementById('session-screen');
+  screen.style.display='flex';
+}
+function hideSessionScreen(){
+  document.getElementById('session-screen').style.display='none';
+  document.getElementById('main').style.display='';
+  document.getElementById('header').style.display='';
+}
+
+async function createSession(){
+  const btn=document.getElementById('btn-create-session');
+  btn.textContent='Connecting…';btn.disabled=true;
+  const ok=await initFirebase();
+  if(!ok){alert('Could not connect to Firebase. Check your internet connection and try again.');btn.textContent='Create New Session';btn.disabled=false;return;}
+  // Generate 6-char code
+  const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code='';for(let i=0;i<6;i++)code+=chars[Math.floor(Math.random()*chars.length)];
+  sessionCode=code;_syncEnabled=true;
+  // Save session code to localStorage
+  localStorage.setItem(STORAGE_KEY+'_session',code);
+  // Push initial state
+  await pushSync();
+  attachSyncListener();
+  hideSessionScreen();
+  updateSyncStatus('synced');
+  renderAll();
+  // Show code to user
+  setTimeout(()=>alert(`Your session code is:\n\n${code}\n\nShare this code with others in your group so they can join.`),300);
+}
+
+async function joinSession(viewerMode=false){
+  const code=(document.getElementById('join-code-inp').value||'').trim().toUpperCase();
+  if(code.length<4){alert('Please enter a valid session code.');return;}
+  const btnId=viewerMode?'btn-join-viewer':'btn-join-session';
+  const btn=document.getElementById(btnId);
+  btn.textContent='Joining…';btn.disabled=true;
+  const ok=await initFirebase();
+  if(!ok){alert('Could not connect. Check your internet connection.');btn.textContent='Join Session';btn.disabled=false;return;}
+  try{
+    const snap=await window._fbGet(window._fbRef(db,`sessions/${code}/data`));
+    if(!snap.exists()){alert(`Session "${code}" not found. Check the code and try again.`);btn.textContent='Join Session';btn.disabled=false;return;}
+    sessionCode=code;_syncEnabled=true;_viewOnly=viewerMode;
+    localStorage.setItem(STORAGE_KEY+'_session',code);
+    localStorage.setItem(STORAGE_KEY+'_viewonly',viewerMode?'1':'0');
+    // Ensure locSpecies is initialized from INITIAL_LOC_SPECIES before applying remote data
+    S.locations.forEach(l=>{
+      if(!S.locSpecies[l.id]||S.locSpecies[l.id].length===0){
+        S.locSpecies[l.id]=[...(INITIAL_LOC_SPECIES[l.id]||[])];
+      }
+    });
+    // Apply remote state only if it has sighting data worth merging
+    const remoteData=snap.val();
+    if(remoteData&&Object.keys(remoteData.seenAt||{}).length>0){
+      applySyncPayload(remoteData);
+    }
+    save();
+    attachSyncListener();
+    hideSessionScreen();
+    updateSyncStatus('synced');
+    renderAll();
+  }catch(e){
+    alert('Error joining session. Please try again.');
+    btn.textContent='Join Session';btn.disabled=false;
+  }
+}
+
+function goOffline(){
+  _syncEnabled=false;sessionCode=null;
+  localStorage.removeItem(STORAGE_KEY+'_session');
+  hideSessionScreen();
+  updateSyncStatus('');
+  renderAll();
+}
+
+async function tryResumeSession(){
+  const saved=localStorage.getItem(STORAGE_KEY+'_session');
+  if(!saved)return false;
+  const ok=await initFirebase();
+  if(!ok)return false;
+  try{
+    const snap=await window._fbGet(window._fbRef(db,`sessions/${saved}/data`));
+    if(!snap.exists())return false;
+    sessionCode=saved;_syncEnabled=true;
+    _viewOnly=localStorage.getItem(STORAGE_KEY+'_viewonly')==='1';
+    applySyncPayload(snap.val());
+    save();
+    attachSyncListener();
+    updateSyncStatus('synced');
+    return true;
+  }catch(e){return false;}
+}
+
+function showSessionCodeAlert(){
+  if(sessionCode)alert(`Session code:\n\n${sessionCode}\n\nShare this with others so they can join your count.`);
+  else alert('You are not in a session. Go to Export → Session to create or join one.');
+}
+function leaveSession(){
+  if(!confirm('Leave this session? You can rejoin with the same code later.'))return;
+  _syncEnabled=false;_syncListenerAttached=false;sessionCode=null;
+  localStorage.removeItem(STORAGE_KEY+'_session');
+  updateSyncStatus('');
+  showSessionScreen();
+}
+
+// ==================== BOOT ====================
+async function boot(){
+  renderAll();
+  // Try to resume previous session silently
+  updateSyncStatus('connecting');
+  const resumed=await tryResumeSession();
+  if(resumed){renderAll();return;}
+  updateSyncStatus('');
+  // Show session screen on first load or if no session
+  showSessionScreen();
+}
+boot();
+</script>
+</body>
+</html>
