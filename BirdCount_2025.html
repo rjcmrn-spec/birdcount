@@ -1468,7 +1468,10 @@ function attachSyncListener(){
     // Instead do surgical updates only
     renderHeader();
     if(currentLoc){
-      // User is inside a stop card — update species list and card header only
+      // Reset filter to 'all' so synced species are always visible
+      S.spFilter='all';
+      const spSearchEl=document.getElementById('sp-search');
+      if(spSearchEl)spSearchEl.value='';
       renderSPCardHeader();
       renderSPList();
     } else if(S.view==='locations'){
