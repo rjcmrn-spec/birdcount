@@ -711,6 +711,20 @@ INITIAL_LOCATIONS.forEach(l=>{
   if(changed)saveLocal();
 })();
 
+// Migration: clear estimated times for stops that should have none
+(function fixTimesMigration(){
+  const noTimesStops=['l45','l42']; // 42S and Ollala-Ireland Road
+  let changed=false;
+  noTimesStops.forEach(lid=>{
+    if(S.times[lid]&&(S.times[lid].estArrive||S.times[lid].estDepart)){
+      S.times[lid].estArrive=null;
+      S.times[lid].estDepart=null;
+      changed=true;
+    }
+  });
+  if(changed)saveLocal();
+})();
+
 // Save locally only - no Firebase push
 function saveLocal(){
   try{localStorage.setItem(STORAGE_KEY,JSON.stringify(S));}catch(e){console.warn('Save failed',e);}
