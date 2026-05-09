@@ -722,7 +722,7 @@ INITIAL_LOCATIONS.forEach(l=>{
       changed=true;
     }
   });
-  if(changed)saveLocal();
+  if(changed){saveLocal();if(_syncEnabled)pushSync();}
 })();
 
 // Save locally only - no Firebase push
@@ -1457,6 +1457,10 @@ function applySyncPayload(data){
         };
       });
     }
+    // Always clear estimated times for stops that should have none
+    ['l45','l42'].forEach(lid=>{
+      if(S.times[lid]){S.times[lid].estArrive=null;S.times[lid].estDepart=null;}
+    });
     // Restore UI state — never let sync overwrite these
     S.spFilter=savedSpFilter;
     S.spOrder=savedSpOrder;
