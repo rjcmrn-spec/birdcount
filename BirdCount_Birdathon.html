@@ -466,6 +466,7 @@ body{
       <div class="export-btn-row">
         <button class="btn-export" onclick="downloadReport()"><span>📄</span> HTML Report</button>
         <button class="btn-export" onclick="downloadJSON()"><span>💾</span> JSON Backup</button>
+        <button class="btn-export" onclick="downloadCSV()"><span>📊</span> Species CSV</button>
       </div>
     </div>
     <div class="export-section">
@@ -1315,8 +1316,29 @@ function buildReport(){
   const dateStr=new Date(S.startTime).toLocaleDateString([],{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   return`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Bird Count Report</title><style>body{font-family:-apple-system,sans-serif;color:#222;max-width:860px;margin:0 auto;padding:2rem;background:#fff}h1{font-size:24px;color:#1a4a16}h2{font-size:16px;color:#2c5828;margin:2rem 0 .8rem;border-bottom:2px solid #c8e0c4;padding-bottom:6px}</style></head><body><h1>🦅 24-Hour Bird Count</h1><p>${dateStr} · ${seen.length} species seen</p><h2>Locations</h2>${locRows}</body></html>`;
 }
+function downloadCSV(){
+  const seen=Object.keys(S.seenAt).sort();
+  if(!seen.length){alert('No species recorded yet.');return;}
+  // Header row
+  const rows=[['Species','Locations Seen']];
+  seen.forEach(name=>{
+    const locs=[S.seenAt[name],...(S.alsoAt[name]||[])].map(id=>{
+      const l=S.locations.find(x=>x.id===id);
+      return l?`${l.name}`:id;
+    });
+    // Escape any commas or quotes in values
+    const escapedName=name.includes(',')?`"${name}"`:name;
+    const escapedLocs=locs.join(' | ');
+    rows.push([escapedName,escapedLocs]);
+  });
+  const csv=rows.map(r=>r.join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`birdathon-species-${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+}
 function downloadReport(){const blob=new Blob([buildReport()],{type:'text/html'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`bird-count-report-${new Date().toISOString().slice(0,10)}.html`;document.body.appendChild(a);a.click();document.body.removeChild(a);}
-function resetAll(){
   if(_viewOnly){alert('Reset is not available in View Only mode.');return;}
   // PIN protection — only the session creator should know this
   if(sessionCode){
