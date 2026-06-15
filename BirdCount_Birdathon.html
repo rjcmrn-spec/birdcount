@@ -1339,15 +1339,15 @@ function downloadCSV(){
   document.body.appendChild(a);a.click();document.body.removeChild(a);
 }
 function downloadReport(){const blob=new Blob([buildReport()],{type:'text/html'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`bird-count-report-${new Date().toISOString().slice(0,10)}.html`;document.body.appendChild(a);a.click();document.body.removeChild(a);}
+function resetAll(){
   if(_viewOnly){alert('Reset is not available in View Only mode.');return;}
-  // PIN protection — only the session creator should know this
   if(sessionCode){
     const pin=prompt('Enter admin PIN to reset all data:');
     if(pin===null)return;
     if(pin!=='7712'){alert('Incorrect PIN.');return;}
   }
   if(!confirm('Reset all sightings, times, GPS and notes? Species assignments are kept.'))return;
-  S.seenAt={};S.alsoAt={};S.notes={};S.skipped={};S.startTime=Date.now();S.locations.forEach(l=>{const t=S.times[l.id]||{};S.times[l.id]={arrive:null,depart:null,lat:null,lng:null,accuracy:null,estArrive:t.estArrive||l.ea||null,estDepart:t.estDepart||l.ed||null};});save();renderAll();
+  S.seenAt={};S.alsoAt={};S.notes={};S.skipped={};S.startTime=new Date('2026-05-15T16:30:00').getTime();S.locations.forEach(l=>{const t=S.times[l.id]||{};S.times[l.id]={arrive:null,depart:null,lat:null,lng:null,accuracy:null,estArrive:t.estArrive||l.ea||null,estDepart:t.estDepart||l.ed||null};});save();renderAll();
 }
 
 // ==================== FIREBASE SYNC ====================
